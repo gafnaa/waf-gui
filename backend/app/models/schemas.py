@@ -12,6 +12,17 @@ class WafRuleRequest(BaseModel):
     action: str  # 'deny' atau 'allow'
     comment: Optional[str] = None
 
+class RuleToggleRequest(BaseModel):
+    rule_id: str
+    enable: bool
+
+class WafRuleStatus(BaseModel):
+    id: str
+    name: str
+    description: str
+    is_enabled: bool
+    category: str
+
 class CommandResponse(BaseModel):
     status: str
     message: str
