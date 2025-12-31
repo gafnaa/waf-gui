@@ -1,8 +1,10 @@
 from typing import List
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+
 from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest
-from app.services import log_service, system_service
+from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -17,30 +19,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Public Endpoints ---
+
 @app.get("/api/health")
 def health_check():
     return {"status": "online", "system": "Rocky Linux 9"}
 
+@app.post("/api/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = auth_service.FAKE_USERS_DB.get(form_data.username)
+    if not user or not auth_service.verify_password(form_data.password, user['hashed_password']):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    
+    access_token = auth_service.create_access_token(data={"sub": user['username']})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- Protected Endpoints ---
+
 @app.get("/api/stats", response_model=StatsResponse)
-def get_stats():
+def get_stats(user = Depends(auth_service.get_current_user)):
     return log_service.analyze_logs()
 
-@app.post("/api/waf/rule", response_model=CommandResponse)
-def add_rule(rule: WafRuleRequest):
-    return system_service.add_waf_rule(str(rule.ip), rule.action)
-
-# --- Endpoint Baru untuk Rule Tuning ---
 @app.get("/api/waf/rules", response_model=List[WafRuleStatus])
-def get_rules():
+def get_rules(user = Depends(auth_service.get_current_user)):
     return system_service.get_waf_rules()
 
 @app.post("/api/waf/rules/toggle", response_model=CommandResponse)
-def toggle_rule(req: RuleToggleRequest):
+def toggle_rule(req: RuleToggleRequest, user = Depends(auth_service.get_current_user)):
     return system_service.toggle_rule(req.rule_id, req.enable)
-# ---------------------------------------
+
+@app.post("/api/waf/rule", response_model=CommandResponse)
+def add_rule(rule: WafRuleRequest, user = Depends(auth_service.get_current_user)):
+    return system_service.add_waf_rule(str(rule.ip), rule.action)
 
 @app.post("/api/system/restart", response_model=CommandResponse)
-def restart_server():
+def restart_server(user = Depends(auth_service.get_current_user)):
     return system_service.restart_nginx()
 
 if __name__ == "__main__":
