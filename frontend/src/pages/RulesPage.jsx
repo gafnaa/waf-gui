@@ -6,14 +6,12 @@ const RulesPage = () => {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch rules saat load
   useEffect(() => {
     fetchRules();
   }, []);
 
   const fetchRules = async () => {
     try {
-        // Ganti URL sesuai backend anda
         const res = await axios.get('http://localhost:8000/api/waf/rules');
         setRules(res.data);
     } catch (err) {
@@ -28,7 +26,7 @@ const RulesPage = () => {
             rule_id: ruleId,
             enable: !currentStatus
         });
-        await fetchRules(); // Refresh list
+        await fetchRules();
     } catch (err) {
         alert("Failed to toggle rule");
     } finally {
@@ -63,7 +61,6 @@ const RulesPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {/* Custom Toggle Switch */}
                         <button 
                             onClick={() => handleToggle(rule.id, rule.is_enabled)}
                             disabled={loading}
@@ -78,12 +75,6 @@ const RulesPage = () => {
                     </div>
                 </div>
             ))}
-        </div>
-        
-        {/* Warning Note */}
-        <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg flex gap-3 text-yellow-500 text-sm">
-            <AlertTriangle size={18} className="shrink-0 mt-0.5"/>
-            <p>Disabling rules reduces server security. Only disable rules if you are sure they are interfering with legitimate traffic (False Positives).</p>
         </div>
     </div>
   );

@@ -9,9 +9,14 @@ class StatsResponse(BaseModel):
 
 class WafRuleRequest(BaseModel):
     ip: IPvAnyAddress
-    action: str  # 'deny' atau 'allow'
+    action: str  # 'deny' or 'allow'
     comment: Optional[str] = None
 
+class CommandResponse(BaseModel):
+    status: str
+    message: str
+
+# --- Schema Baru ---
 class RuleToggleRequest(BaseModel):
     rule_id: str
     enable: bool
@@ -22,7 +27,3 @@ class WafRuleStatus(BaseModel):
     description: str
     is_enabled: bool
     category: str
-
-class CommandResponse(BaseModel):
-    status: str
-    message: str
