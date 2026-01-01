@@ -16,7 +16,13 @@ WAF_RULES_DB = [
 ]
 
 # File khusus untuk menyimpan rule yang dimatikan (Exclusions)
-EXCLUSION_FILE = "/etc/nginx/modsec/waf-exclusions.conf"
+if os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
+    # Dev Mode: Use local file
+    EXCLUSION_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "dummy_waf_exclusions.conf")
+else:
+    # Production Mode (Linux/Nginx)
+    EXCLUSION_FILE = "/etc/nginx/modsec/waf-exclusions.conf"
+
 # File untuk custom rules
 CUSTOM_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "custom_rules.conf")
 
@@ -81,18 +87,17 @@ def toggle_rule(rule_id: str, enable: bool):
             # Nyalakan rule -> Hapus exclusion
             new_lines = [line for line in existing_lines if line.strip() != exclusion_line.strip()]
 
-        # 3. Tulis ulang file (membutuhkan sudo tee)
+        # 3. Tulis ulang file
         # Gabungkan lines jadi satu string
         content_str = "".join(new_lines)
         
-        # Tulis via subprocess sudo
-        cmd = f"echo '{content_str}' | sudo tee {EXCLUSION_FILE}"
-        # Di Windows/Dev, kita tulis ke file lokal dummy jika perlu
-        if os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
-             # Mocking for local dev
-             with open("dummy_waf_exclusions.conf", "w") as f:
+        # Jika dev mode (file lokal), tulis langsung. Jika prod, pakai sudo tee.
+        if os.name == 'nt' or "dummy" in EXCLUSION_FILE:
+             with open(EXCLUSION_FILE, "w") as f:
                  f.write(content_str)
         else:
+             # Tulis via subprocess sudo
+             cmd = f"echo '{content_str}' | sudo tee {EXCLUSION_FILE}"
              subprocess.run(cmd, shell=True, check=True)
         
         restart_nginx()
