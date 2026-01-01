@@ -58,12 +58,14 @@ function App() {
         
         {/* Page Content */}
         <div className="max-w-7xl mx-auto">
-            {activeTab === 'overview' && <OverviewPage />}
-            {activeTab === 'rules' && <RulesPage />}
-            {activeTab === 'access-control' && <PlaceholderPage title="Access Control" />}
-            {activeTab === 'server-monitor' && <PlaceholderPage title="Server Monitor" />}
-            {activeTab === 'logs' && <PlaceholderPage title="System Logs" />}
-            {activeTab === 'settings' && <PlaceholderPage title="System Configuration" />}
+            <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out">
+                {activeTab === 'overview' && <OverviewPage />}
+                {activeTab === 'rules' && <RulesPage />}
+                {activeTab === 'access-control' && <PlaceholderPage title="Access Control" />}
+                {activeTab === 'server-monitor' && <PlaceholderPage title="Server Monitor" />}
+                {activeTab === 'logs' && <PlaceholderPage title="System Logs" />}
+                {activeTab === 'settings' && <PlaceholderPage title="System Configuration" />}
+            </div>
         </div>
       </main>
     </div>
