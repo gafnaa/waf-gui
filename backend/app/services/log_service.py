@@ -7,6 +7,7 @@ import random
 from collections import deque
 from app.core.config import get_settings
 from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
+from app.services import system_service
 
 settings = get_settings()
 
@@ -179,14 +180,20 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         except Exception as e:
             print(f"Error reading logs: {e}")
 
+    # Fetch current rule configuration
+    rules_config = system_service.get_waf_rules()
+    # Map rule ID to status ("Active" if enabled else "Inactive")
+    # IDs in WAF_RULES_DB match the ones we use below (SQL-01, etc)
+    rule_status = {r['id']: ("Active" if r['enabled'] else "Inactive") for r in rules_config}
+
     # Build Modules List
     modules_list = [
-        AttackModule(id="SQL-01", title="SQL Injection", subtitle="High Severity Protection", count=attacks["sql_injection"], trend=generate_fake_trend(attacks["sql_injection"]), status="Active", last_incident="1m ago"),
-        AttackModule(id="XSS-02", title="XSS", subtitle="Script Injection Defense", count=attacks["xss"], trend=generate_fake_trend(attacks["xss"]), status="Active", last_incident="5m ago"),
-        AttackModule(id="LFI-03", title="LFI", subtitle="Local File Inclusion", count=attacks["lfi"], trend=generate_fake_trend(attacks["lfi"]), status="Active", last_incident="Unknown"),
-        AttackModule(id="RCE-04", title="RCE", subtitle="Remote Code Execution", count=attacks["rce"], trend=generate_fake_trend(attacks["rce"]), status="Active", last_incident="Unknown"),
-        AttackModule(id="BOT-05", title="Bad Bots", subtitle="Crawler & Scanner Def", count=attacks["bad_bots"], trend=generate_fake_trend(attacks["bad_bots"]), status="Active", last_incident="Just now"),
-        AttackModule(id="BF-06", title="Brute Force", subtitle="Credential Protection", count=attacks["brute_force"], trend=generate_fake_trend(attacks["brute_force"]), status="Active", last_incident="2m ago")
+        AttackModule(id="SQL-01", title="SQL Injection", subtitle="High Severity Protection", count=attacks["sql_injection"], trend=generate_fake_trend(attacks["sql_injection"]), status=rule_status.get("SQL-01", "Active"), last_incident="1m ago"),
+        AttackModule(id="XSS-02", title="XSS", subtitle="Script Injection Defense", count=attacks["xss"], trend=generate_fake_trend(attacks["xss"]), status=rule_status.get("XSS-02", "Active"), last_incident="5m ago"),
+        AttackModule(id="LFI-03", title="LFI", subtitle="Local File Inclusion", count=attacks["lfi"], trend=generate_fake_trend(attacks["lfi"]), status=rule_status.get("LFI-03", "Active"), last_incident="Unknown"),
+        AttackModule(id="RCE-04", title="RCE", subtitle="Remote Code Execution", count=attacks["rce"], trend=generate_fake_trend(attacks["rce"]), status=rule_status.get("RCE-04", "Active"), last_incident="Unknown"),
+        AttackModule(id="BOT-05", title="Bad Bots", subtitle="Crawler & Scanner Def", count=attacks["bad_bots"], trend=generate_fake_trend(attacks["bad_bots"]), status=rule_status.get("BOT-05", "Active"), last_incident="Just now"),
+        AttackModule(id="BF-06", title="Brute Force", subtitle="Credential Protection", count=attacks["brute_force"], trend=generate_fake_trend(attacks["brute_force"]), status=rule_status.get("BF-06", "Active"), last_incident="2m ago")
     ]
 
     return StatsResponse(
