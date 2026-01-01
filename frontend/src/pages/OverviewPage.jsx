@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -24,98 +24,12 @@ import {
   Cpu, 
   Globe, 
   Zap,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-
-// --- Mock Data ---
-const trafficData = Array.from({ length: 24 }, (_, i) => ({
-  time: `${i}:00`,
-  valid: Math.floor(Math.random() * 500) + 200,
-  blocked: Math.floor(Math.random() * 100) + 20
-}));
-
-const attackModules = [
-  {
-    title: 'SQL Injection',
-    subtitle: 'High Severity Protection',
-    count: 42,
-    trend: [4, 6, 8, 12, 10, 15, 20], // Last 7 data points
-    icon: Database,
-    color: 'text-rose-500',
-    bgColor: 'bg-rose-500/10',
-    lineColor: '#f43f5e',
-    status: 'Active',
-    lastIncident: '2m ago',
-    id: '9422'
-  },
-  {
-    title: 'XSS Filtering',
-    subtitle: 'Script Injection Defense',
-    count: 12,
-    trend: [2, 3, 2, 5, 4, 3, 2],
-    icon: Code,
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-500/10',
-    lineColor: '#f59e0b',
-    status: 'Active',
-    lastIncident: '45m ago',
-    id: '1084'
-  },
-  {
-    title: 'DDoS Protection',
-    subtitle: 'L7 Rate Limiting',
-    count: '1.0K',
-    trend: [100, 200, 150, 400, 300, 800, 1000],
-    icon: Zap,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-    lineColor: '#a855f7',
-    status: 'Active',
-    lastIncident: 'Just now',
-    id: 'D-01'
-  },
-  {
-    title: 'Brute Force',
-    subtitle: 'Credential Stuffing',
-    count: 85,
-    trend: [10, 12, 15, 20, 40, 60, 85],
-    icon: Lock,
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10',
-    lineColor: '#f97316',
-    status: 'Active',
-    lastIncident: '1h ago',
-    id: '8821'
-  },
-  {
-    title: 'Command Injection',
-    subtitle: 'System Call Protection',
-    count: 0,
-    trend: [0, 0, 0, 0, 0, 0, 0],
-    icon: Terminal,
-    color: 'text-slate-500',
-    bgColor: 'bg-slate-500/10',
-    lineColor: '#64748b',
-    status: 'Inactive',
-    lastIncident: 'No data',
-    id: '----'
-  },
-  {
-    title: 'Bot Mitigation',
-    subtitle: 'User-Agent Challenge',
-    count: 305,
-    trend: [20, 40, 50, 80, 100, 200, 305],
-    icon: Bot,
-    color: 'text-emerald-500',
-    bgColor: 'bg-emerald-500/10',
-    lineColor: '#10b981',
-    status: 'Active',
-    lastIncident: '5m ago',
-    id: 'B-99'
-  }
-];
+import { getStats } from "../services/api";
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
   <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
@@ -141,12 +55,33 @@ const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
 const ModuleCard = ({ module }) => {
   const isActive = module.status === 'Active';
   
+  // Mapping Icon Name string to Component if needed, or if module.icon isn't a component
+  let IconComponent = Shield;
+  if (module.title.includes("SQL")) IconComponent = Database;
+  if (module.title.includes("XSS")) IconComponent = Code;
+  if (module.title.includes("DDoS")) IconComponent = Zap;
+  if (module.title.includes("Brute")) IconComponent = Lock;
+  if (module.title.includes("Command")) IconComponent = Terminal;
+  if (module.title.includes("Bot")) IconComponent = Bot;
+
+  // Color logic based on component type
+  let color = 'text-blue-500';
+  let bgColor = 'bg-blue-500/10';
+  let lineColor = '#3b82f6';
+
+  if (module.title.includes("SQL")) { color = 'text-rose-500'; bgColor = 'bg-rose-500/10'; lineColor = '#f43f5e'; }
+  if (module.title.includes("XSS")) { color = 'text-amber-500'; bgColor = 'bg-amber-500/10'; lineColor = '#f59e0b'; }
+  if (module.title.includes("DDoS")) { color = 'text-purple-500'; bgColor = 'bg-purple-500/10'; lineColor = '#a855f7'; }
+  if (module.title.includes("Brute")) { color = 'text-orange-500'; bgColor = 'bg-orange-500/10'; lineColor = '#f97316'; }
+  if (module.title.includes("Command")) { color = 'text-slate-500'; bgColor = 'bg-slate-500/10'; lineColor = '#64748b'; }
+  if (module.title.includes("Bot")) { color = 'text-emerald-500'; bgColor = 'bg-emerald-500/10'; lineColor = '#10b981'; }
+
   return (
     <div className={`relative bg-slate-900/50 border ${isActive ? 'border-slate-800' : 'border-slate-800/60 opacity-70'} rounded-xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all group overflow-hidden`}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${module.bgColor}`}>
-            <module.icon className={`w-5 h-5 ${module.color}`} />
+          <div className={`p-2.5 rounded-lg ${bgColor}`}>
+            <IconComponent className={`w-5 h-5 ${color}`} />
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-100">{module.title}</h4>
@@ -165,10 +100,10 @@ const ModuleCard = ({ module }) => {
            {isActive ? (
              <>
                 <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-bold ${module.color}`}>{module.count}</span>
+                    <span className={`text-2xl font-bold ${color}`}>{module.count}</span>
                     <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">Today</span>
                 </div>
-                <p className="text-[10px] text-slate-600 mt-1">Last incident: {module.lastIncident}</p>
+                <p className="text-[10px] text-slate-600 mt-1">Last incident: {module.last_incident}</p>
              </>
            ) : (
                 <div className="text-xl font-bold text-slate-600 tracking-wide">Inactive</div>
@@ -176,12 +111,12 @@ const ModuleCard = ({ module }) => {
         </div>
 
         {/* Mini Bar Chart for Trend */}
-        {isActive && (
+        {isActive && module.trend && (
             <div className="flex items-end gap-1 h-8">
                 {module.trend.map((val, i) => (
                     <div 
                         key={i} 
-                        style={{ height: `${(val / Math.max(...module.trend)) * 100}%`, backgroundColor: module.lineColor }} 
+                        style={{ height: `${(val / (Math.max(...module.trend) || 1)) * 100}%`, backgroundColor: lineColor }} 
                         className="w-1.5 rounded-t-sm opacity-60 hover:opacity-100 transition-opacity"
                     />
                 ))}
@@ -195,6 +130,47 @@ const ModuleCard = ({ module }) => {
 };
 
 const OverviewPage = () => {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await getStats();
+                setStats(res.data);
+                setLoading(false);
+            } catch (err) {
+                console.error("Failed to fetch stats:", err);
+                setError("Failed to load dashboard data. Is backend running?");
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+        // Set interval to refresh data every 10 seconds
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh] text-slate-400 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                <p>Loading security status...</p>
+            </div>
+        );
+    }
+
+    if (error || !stats) {
+        return (
+             <div className="flex items-center justify-center h-[50vh] text-red-400 gap-3">
+                <FileWarning className="w-8 h-8" />
+                <p>{error || "No data available"}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             
@@ -224,29 +200,29 @@ const OverviewPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard 
                     title="Total Requests" 
-                    value="2.4M" 
-                    subtext="+12%" 
+                    value={stats.total_requests.toLocaleString()} 
+                    subtext="Live" 
                     trendUp={true} 
                     icon={Globe} 
                 />
                 <StatCard 
                     title="Threats Blocked" 
-                    value="1,498" 
-                    subtext="+5%" 
+                    value={stats.blocked_attacks.toLocaleString()} 
+                    subtext="Live" 
                     trendUp={true} 
                     icon={Shield} 
                 />
                 <StatCard 
                     title="Avg Latency" 
-                    value="24ms" 
-                    subtext="-2ms" 
+                    value={stats.avg_latency} 
+                    subtext="Stable" 
                     trendUp={true} 
                     icon={Clock} 
                 />
                 <StatCard 
                     title="CPU Load" 
-                    value="42%" 
-                    subtext="Stable" 
+                    value={stats.cpu_load} 
+                    subtext={stats.system_status} 
                     trendUp={false} 
                     icon={Cpu} 
                 />
@@ -258,7 +234,7 @@ const OverviewPage = () => {
                     <div className="h-5 w-1 bg-rose-500 rounded-full" />
                     <h3 className="text-lg font-bold text-white">Active Protection Modules</h3>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 tracking-wide">
-                        SYSTEM HEALTHY
+                        {stats.system_status}
                     </span>
                 </div>
                 <Button variant="ghost" className="text-xs text-blue-400 hover:text-blue-300 p-0 h-auto font-normal">
@@ -268,7 +244,7 @@ const OverviewPage = () => {
 
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {attackModules.map((module, idx) => (
+                {stats.attack_modules.map((module, idx) => (
                     <ModuleCard key={idx} module={module} />
                 ))}
             </div>
@@ -278,7 +254,7 @@ const OverviewPage = () => {
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h3 className="text-lg font-bold text-white">Real-Time Traffic Analysis</h3>
-                        <p className="text-sm text-slate-500">Requests per Second (RPS) • Inbound Traffic</p>
+                        <p className="text-sm text-slate-500">Hourly Requests (24h) • Inbound Traffic</p>
                     </div>
                     <div className="flex items-center gap-4 text-xs font-medium">
                         <div className="flex items-center gap-2">
@@ -294,7 +270,7 @@ const OverviewPage = () => {
                 
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trafficData}>
+                        <AreaChart data={stats.traffic_chart}>
                             <defs>
                                 <linearGradient id="colorValid" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
