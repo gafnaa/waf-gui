@@ -25,15 +25,23 @@ const RulesPage = () => {
     // Initial Fetch
     useEffect(() => {
         const fetchAll = async () => {
+            setLoading(true);
             try {
-                const [rulesRes, customRes] = await Promise.all([
-                    getRules(),
-                    getCustomRules()
-                ]);
-                setRules(rulesRes.data);
-                setCustomRules(customRes.data.content);
-            } catch (err) {
-                console.error("Failed to load rules", err);
+                // Fetch Core Rules
+                try {
+                    const rulesRes = await getRules();
+                    setRules(rulesRes.data);
+                } catch (e) {
+                    console.error("Failed to load core rules:", e);
+                }
+
+                // Fetch Custom Rules
+                try {
+                    const customRes = await getCustomRules();
+                    setCustomRules(customRes.data.content);
+                } catch (e) {
+                    console.error("Failed to load custom rules:", e);
+                }
             } finally {
                 setLoading(false);
             }
