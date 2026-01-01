@@ -90,9 +90,7 @@ const ModuleCard = ({ module }) => {
         </div>
         
         {/* Toggle Simulation */}
-        <div className={`w-8 h-4 rounded-full relative transition-colors ${isActive ? 'bg-emerald-500/20' : 'bg-slate-700/50'}`}>
-          <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isActive ? 'right-0.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'left-0.5 bg-slate-500'}`} />
-        </div>
+
       </div>
 
       <div className="flex justify-between items-end">
