@@ -14,22 +14,85 @@ import {
   Shield, 
   Database, 
   Code, 
-  FileWarning, 
   Terminal, 
   Bot, 
   Lock, 
-  Activity, 
   Download, 
   Clock, 
   Cpu, 
   Globe, 
   Zap,
   ArrowRight,
-  Loader2
+  Loader2,
+  FileWarning
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { getStats } from "../services/api";
+
+// --- Hooks & Components for Animation ---
+
+const useCountUp = (end, duration = 1500) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime;
+    let animationFrame;
+
+    // Reset loop if end changes drasticly? 
+    // For now we just animate from 0 on mount or when key changes.
+    
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Ease Out Quart
+      const ease = 1 - Math.pow(1 - percentage, 4);
+      
+      setCount(ease * end);
+
+      if (progress < duration) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        setCount(end); // Ensure exact final value
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration]);
+
+  return count;
+};
+
+const AnimatedNumber = ({ value }) => {
+  // Handle numbers or strings with suffixes (e.g. "45%", "12ms")
+  let numericValue = 0;
+  let suffix = "";
+
+  if (typeof value === 'number') {
+    numericValue = value;
+  } else if (typeof value === 'string') {
+    // Regex extract number and suffix
+    const match = value.match(/([\d\.]+)(.*)/);
+    if (match) {
+        numericValue = parseFloat(match[1]);
+        suffix = match[2];
+    } else {
+        return <span>{value}</span>; // Fallback for non-numeric
+    }
+  }
+
+  const current = useCountUp(numericValue);
+  
+  // Format: Commas for large integers, decimals for small floats (if any)
+  // We assume integer counting mostly.
+  const displayVal = Math.floor(current).toLocaleString();
+
+  return <span>{displayVal}{suffix}</span>;
+};
+
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
   <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
@@ -40,7 +103,9 @@ const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
       </div>
     </div>
     <div className="flex items-end gap-3 z-10">
-      <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
+      <h3 className="text-3xl font-bold text-white tracking-tight">
+         <AnimatedNumber value={value} />
+      </h3>
       {subtext && (
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${trendUp ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-400 bg-slate-800'}`}>
           {subtext}
@@ -54,6 +119,13 @@ const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
 
 const ModuleCard = ({ module }) => {
   const isActive = module.status === 'Active';
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    // Trigger animation on mount
+    const timer = setTimeout(() => setAnimate(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
   
   // Mapping Icon Name string to Component if needed, or if module.icon isn't a component
   let IconComponent = Shield;
@@ -88,9 +160,6 @@ const ModuleCard = ({ module }) => {
             <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{module.subtitle}</p>
           </div>
         </div>
-        
-        {/* Toggle Simulation */}
-
       </div>
 
       <div className="flex justify-between items-end">
@@ -98,7 +167,9 @@ const ModuleCard = ({ module }) => {
            {isActive ? (
              <>
                 <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-bold ${color}`}>{module.count}</span>
+                    <span className={`text-2xl font-bold ${color}`}>
+                        <AnimatedNumber value={module.count} />
+                    </span>
                     <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">Today</span>
                 </div>
                 <p className="text-[10px] text-slate-600 mt-1">Last incident: {module.last_incident}</p>
@@ -114,8 +185,12 @@ const ModuleCard = ({ module }) => {
                 {module.trend.map((val, i) => (
                     <div 
                         key={i} 
-                        style={{ height: `${(val / (Math.max(...module.trend) || 1)) * 100}%`, backgroundColor: lineColor }} 
-                        className="w-1.5 rounded-t-sm opacity-60 hover:opacity-100 transition-opacity"
+                        style={{ 
+                            height: animate ? `${(val / (Math.max(...module.trend) || 1)) * 100}%` : '0%', 
+                            backgroundColor: lineColor,
+                            transitionDelay: `${i * 100}ms`
+                        }} 
+                        className="w-1.5 rounded-t-sm opacity-60 hover:opacity-100 transition-all duration-500 ease-out"
                     />
                 ))}
             </div>
@@ -146,7 +221,6 @@ const OverviewPage = () => {
         };
 
         fetchData();
-        // Set interval to refresh data every 10 seconds
         const interval = setInterval(fetchData, 10000);
         return () => clearInterval(interval);
     }, []);
@@ -198,14 +272,14 @@ const OverviewPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard 
                     title="Total Requests" 
-                    value={stats.total_requests.toLocaleString()} 
+                    value={stats.total_requests} 
                     subtext="Live" 
                     trendUp={true} 
                     icon={Globe} 
                 />
                 <StatCard 
                     title="Threats Blocked" 
-                    value={stats.blocked_attacks.toLocaleString()} 
+                    value={stats.blocked_attacks} 
                     subtext="Live" 
                     trendUp={true} 
                     icon={Shield} 
@@ -298,13 +372,16 @@ const OverviewPage = () => {
                                 itemStyle={{ fontSize: '12px' }}
                                 labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                             />
+                            {/* Animated Areas */}
                             <Area 
                                 type="monotone" 
                                 dataKey="valid" 
                                 stroke="#3b82f6" 
                                 strokeWidth={2}
                                 fillOpacity={1} 
-                                fill="url(#colorValid)" 
+                                fill="url(#colorValid)"
+                                animationDuration={2000}
+                                animationEasing="ease-out"
                             />
                             <Area 
                                 type="monotone" 
@@ -312,7 +389,9 @@ const OverviewPage = () => {
                                 stroke="#f43f5e" 
                                 strokeWidth={2}
                                 fillOpacity={1} 
-                                fill="url(#colorBlocked)" 
+                                fill="url(#colorBlocked)"
+                                animationDuration={2000}
+                                animationEasing="ease-out"
                             />
                         </AreaChart>
                     </ResponsiveContainer>

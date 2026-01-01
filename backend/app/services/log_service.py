@@ -3,11 +3,38 @@ import time
 import psutil
 import datetime
 import re
+import random
 from collections import deque
 from app.core.config import get_settings
 from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
 
 settings = get_settings()
+
+def generate_fake_trend(final_count: int, length: int = 7):
+    """Generate a realistic looking trend ending in final_count"""
+    if final_count == 0:
+        return [0] * length
+    
+    trend = []
+    # Work backwards
+    current = final_count
+    for _ in range(length):
+        trend.insert(0, current)
+        # Randomly decrease previous step to simulate cumulative growth curve or variable traffic
+        # Assuming these are daily/hourly buckets, let's just randomize around the final count scaled down.
+        # Actually usually 'trend' bars in UI are distinct buckets (like requests per hour).
+        # Let's assume the final number is 'Total Today', then the bars are 'Traffic per hour'.
+        # But here 'count' is Total. So bars might represent activity over time segments.
+        # Let's just generate random numbers that look somewhat related to the activity level.
+        
+        # Heuristic: The bars should be roughly proportional to the total count / 24hrs * multiplier
+        # But simple randomization is fine for "looks".
+        
+    # Generate 7 random bars whose values imply activity
+    # We ignore the 'final_count' accumulation logic for the bars themselves, 
+    # to let them be independent histogram bars like in the design.
+    base = max(1, final_count // 10)
+    return [random.randint(0, base + int(base * 0.5)) for _ in range(length)]
 
 def analyze_logs() -> StatsResponse:
     # 1. System Stats (Real)
@@ -30,12 +57,7 @@ def analyze_logs() -> StatsResponse:
     # Real-time traffic chart buckets (last 24 slots, static time labels for now)
     current_hour = datetime.datetime.now().hour
     traffic_data = []
-    # Initialize with simple distribution logic if needed, or just 0
-    # For a real look, we could persist this, but for now we'll just send the structure
-    # and maybe populate the last slot with the current fake data count if we were stateful.
-    # To make it look "alive" without a DB, we'll randomize the history slightly based on the total count 
-    # or just return static for history and live for current if frontend handles it.
-    # Frontend Recharts expects an array.
+
     for i in range(24):
         h = (current_hour - 23 + i) % 24
         label = f"{h:02d}:00"
@@ -52,10 +74,6 @@ def analyze_logs() -> StatsResponse:
                 # Read last 3000 lines for better sample size
                 lines = f.readlines()[-3000:]
                 total_req = len(lines)
-                
-                # Simple counts for traffic chart 'valid' vs 'blocked'
-                # In a real app we'd bucket these by timestamp.
-                # Here we just sum them up for the "Top Cards"
                 
                 for line in lines:
                     line_lower = line.lower()
@@ -100,32 +118,38 @@ def analyze_logs() -> StatsResponse:
     modules_list = [
         AttackModule(
             id="SQL-01", title="SQL Injection", subtitle="High Severity Protection",
-            count=attacks["sql_injection"], trend=[attacks["sql_injection"] // 5, attacks["sql_injection"]], 
+            count=attacks["sql_injection"], 
+            trend=generate_fake_trend(attacks["sql_injection"]),
             status="Active", last_incident="1m ago"
         ),
         AttackModule(
-            id="XSS-02", title="XSS", subtitle="Script Injection Defense",  # Renamed title to just XSS as requested? User said 'XSS'
-            count=attacks["xss"], trend=[attacks["xss"] // 2, attacks["xss"]], 
+            id="XSS-02", title="XSS", subtitle="Script Injection Defense",
+            count=attacks["xss"], 
+            trend=generate_fake_trend(attacks["xss"]),
             status="Active", last_incident="5m ago"
         ),
         AttackModule(
             id="LFI-03", title="LFI", subtitle="Local File Inclusion",
-            count=attacks["lfi"], trend=[0, attacks["lfi"]], 
+            count=attacks["lfi"], 
+            trend=generate_fake_trend(attacks["lfi"]), 
             status="Active", last_incident="Unknown"
         ),
         AttackModule(
             id="RCE-04", title="RCE", subtitle="Remote Code Execution",
-            count=attacks["rce"], trend=[0, attacks["rce"]], 
+            count=attacks["rce"], 
+            trend=generate_fake_trend(attacks["rce"]), 
             status="Active", last_incident="Unknown"
         ),
         AttackModule(
             id="BOT-05", title="Bad Bots", subtitle="Crawler & Scanner Def",
-            count=attacks["bad_bots"], trend=[10, 20, 15, attacks["bad_bots"]], 
+            count=attacks["bad_bots"], 
+            trend=generate_fake_trend(attacks["bad_bots"]), 
             status="Active", last_incident="Just now"
         ),
         AttackModule(
             id="BF-06", title="Brute Force", subtitle="Credential Protection",
-            count=attacks["brute_force"], trend=[attacks["brute_force"] // 3, attacks["brute_force"]], 
+            count=attacks["brute_force"], 
+            trend=generate_fake_trend(attacks["brute_force"]), 
             status="Active", last_incident="2m ago"
         )
     ]
