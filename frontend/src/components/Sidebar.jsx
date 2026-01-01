@@ -11,7 +11,7 @@ import {
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'rules', label: 'Rules', icon: Shield },
+    { id: 'rules', label: 'Rules Engine', icon: Shield },
     { id: 'access-control', label: 'Access Control', icon: Lock },
     { id: 'server-monitor', label: 'Server Monitor', icon: Server },
     { id: 'logs', label: 'Logs', icon: FileText },

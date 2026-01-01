@@ -44,6 +44,9 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class CustomRuleRequest(BaseModel):
+    content: str
+
 class RuleToggleRequest(BaseModel):
     rule_id: str
     enable: bool
