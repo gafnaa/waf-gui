@@ -180,7 +180,7 @@ const ModuleCard = ({ module, timeRange }) => {
                     <span className={`text-2xl font-bold ${color}`}>
                         <AnimatedNumber value={module.count} />
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">Today</span>
+                    <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{getContextLabel()}</span>
                 </div>
                 <p className="text-[10px] text-slate-600 mt-1">Last incident: {module.last_incident}</p>
              </>
