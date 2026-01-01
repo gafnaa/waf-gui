@@ -40,6 +40,10 @@ class CommandResponse(BaseModel):
     status: str
     message: str
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class RuleToggleRequest(BaseModel):
     rule_id: str
     enable: bool

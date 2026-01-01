@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -26,9 +26,9 @@ def health_check():
     return {"status": "online", "system": "Rocky Linux 9"}
 
 @app.post("/api/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = auth_service.FAKE_USERS_DB.get(form_data.username)
-    if not user or not auth_service.verify_password(form_data.password, user['hashed_password']):
+def login(login_data: LoginRequest):
+    user = auth_service.FAKE_USERS_DB.get(login_data.username)
+    if not user or not auth_service.verify_password(login_data.password, user['hashed_password']):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
     access_token = auth_service.create_access_token(data={"sub": user['username']})
