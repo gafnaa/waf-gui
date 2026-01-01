@@ -1,36 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut } from 'lucide-react'; // Tambah icon LogOut
+import { LogOut, Bell } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import RulesPage from './pages/RulesPage';
-import LoginPage from './pages/LoginPage'; // Import Halaman Login
-// ... import Dashboard dan komponen lainnya tetap sama ...
-import { Activity, ShieldAlert, Server, RefreshCw, Lock, Unlock } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getStats, addWafRule, restartNginx } from './services/api';
-import StatCard from './components/StatCard';
+import LoginPage from './pages/LoginPage';
+import OverviewPage from './pages/OverviewPage';
 
-// --- KOMPONEN DASHBOARD (Sama seperti sebelumnya) ---
-const Dashboard = () => {
-    // ... (Isi tetap sama dengan kode sebelumnya) ...
-    // Agar hemat karakter, saya tidak tulis ulang bagian ini.
-    // Pakai kode Dashboard dari jawaban sebelumnya.
-    const [stats, setStats] = useState({ total_requests: 0, blocked_attacks: 0, cache_hit_rate: 0, status: 'loading...' });
-    const [chartData, setChartData] = useState([]);
-    const [ipInput, setIpInput] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-
-    // ... useEffect fetch data & handler function (copy dari kode lama) ...
-    // (Silakan pakai kode Dashboard dari jawaban "kirim full App.jsx" sebelumnya)
-    return (
-       <div className="text-white">Isi Dashboard... (Pastikan kode Dashboard dicopy kesini)</div>
-    );
-};
+// Placeholder Components for missing pages
+const PlaceholderPage = ({ title }) => (
+    <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+        <div className="p-6 bg-slate-800/50 rounded-full border border-dashed border-slate-700">
+            <span className="text-4xl">🚧</span>
+        </div>
+        <div>
+            <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+            <p className="text-slate-400 max-w-sm mx-auto">
+                This module is under development. Please check back later for updates.
+            </p>
+        </div>
+    </div>
+);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview'); // Default to overview
 
-  // Cek Login saat Aplikasi dibuka
+  // Check Login on App Load
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -47,44 +41,30 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  // Jika belum login, tampilkan Login Page
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Jika sudah login, tampilkan Dashboard
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex">
+    <div className="min-h-screen bg-[#050A18] text-slate-200 font-sans flex overflow-hidden">
+      {/* Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 ml-64 p-8">
-        <header className="flex justify-between items-center mb-8">
-            <div>
-                <h2 className="text-2xl font-bold text-white capitalize">{activeTab.replace('-', ' ')}</h2>
-                <p className="text-gray-400 text-sm">Server: Rocky-Linux-9-Node-1</p>
-            </div>
-            <div className="flex items-center gap-4">
-                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-xs font-bold border border-emerald-500/20">
-                    SYSTEM ONLINE
-                </span>
-                
-                {/* Tombol Logout */}
-                <button 
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm font-medium"
-                >
-                    <LogOut size={16}/> Logout
-                </button>
-            </div>
-        </header>
-
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'rules' && <RulesPage />}
-        {activeTab === 'logs' && (
-            <div className="flex items-center justify-center h-64 border border-dashed border-gray-700 rounded-xl text-gray-500">
-                Coming Soon
-            </div>
-        )}
+      {/* Main Content Area */}
+      <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto">
+        
+        {/* Global Header (Optional - usually page specific but we can keep a top bar if needed) */}
+        {/* For this design, headers are inside pages, but we can add a user/notif bar here if we want global access */}
+        
+        {/* Page Content */}
+        <div className="max-w-7xl mx-auto">
+            {activeTab === 'overview' && <OverviewPage />}
+            {activeTab === 'rules' && <RulesPage />}
+            {activeTab === 'access-control' && <PlaceholderPage title="Access Control" />}
+            {activeTab === 'server-monitor' && <PlaceholderPage title="Server Monitor" />}
+            {activeTab === 'logs' && <PlaceholderPage title="System Logs" />}
+            {activeTab === 'settings' && <PlaceholderPage title="System Configuration" />}
+        </div>
       </main>
     </div>
   );
