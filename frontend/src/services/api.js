@@ -22,7 +22,7 @@ export const loginUser = (username, password) => {
     return api.post('/login', { username, password });
 };
 
-export const getStats = () => api.get('/stats');
+export const getStats = (range = "live") => api.get(`/stats?range=${range}`);
 export const addWafRule = (ip, action) => api.post('/waf/rule', { ip, action });
 export const getRules = () => api.get('/waf/rules');
 export const toggleRule = (rule_id, enable) => api.post('/waf/rules/toggle', { rule_id, enable });

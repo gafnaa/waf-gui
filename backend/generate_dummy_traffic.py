@@ -55,7 +55,7 @@ attack_patterns = [
 
 def generate_log_line():
     ip = f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(0,255)}"
-    timestamp = datetime.datetime.now().strftime("[%d/%b/%Y:%H:%M:%S +0000]")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("[%d/%b/%Y:%H:%M:%S +0000]")
     
     # 70% Normal traffic, 30% Attack
     if random.random() > 0.3:

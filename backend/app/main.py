@@ -37,8 +37,8 @@ def login(login_data: LoginRequest):
 # --- Protected Endpoints ---
 
 @app.get("/api/stats", response_model=StatsResponse)
-def get_stats(user = Depends(auth_service.get_current_user)):
-    return log_service.analyze_logs()
+def get_stats(range: str = "live", user = Depends(auth_service.get_current_user)):
+    return log_service.analyze_logs(range)
 
 @app.get("/api/waf/rules", response_model=List[WafRuleStatus])
 def get_rules(user = Depends(auth_service.get_current_user)):

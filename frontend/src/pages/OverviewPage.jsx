@@ -117,9 +117,19 @@ const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
   </div>
 );
 
-const ModuleCard = ({ module }) => {
+const ModuleCard = ({ module, timeRange }) => {
   const isActive = module.status === 'Active';
   const [animate, setAnimate] = useState(false);
+
+  // Helper to format the "Today" label based on context
+  const getContextLabel = () => {
+      const t = timeRange || 'Live';
+      if (t === 'Live') return 'Today'; // Live usually implies Today's rolling status
+      if (t === '1H') return 'Last Hour';
+      if (t === '24H') return '24 Hours';
+      if (t === '7D') return '7 Days';
+      return t;
+  };
 
   useEffect(() => {
     // Trigger animation on mount
@@ -205,27 +215,36 @@ const ModuleCard = ({ module }) => {
 const OverviewPage = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const [error, setError] = useState(null);
+    const [timeRange, setTimeRange] = useState('Live');
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await getStats();
+                // Keep loading true only on first load or manual filter change if desired, 
+                // but for smooth polling we might not want spinner every 10s.
+                // We'll let the user see the numbers update.
+                const res = await getStats(timeRange.toLowerCase());
                 setStats(res.data);
                 setLoading(false);
+                setIsTransitioning(false);
             } catch (err) {
                 console.error("Failed to fetch stats:", err);
                 setError("Failed to load dashboard data. Is backend running?");
                 setLoading(false);
+                setIsTransitioning(false);
             }
         };
 
+        setIsTransitioning(true); // Start fade out
         fetchData();
+        
         const interval = setInterval(fetchData, 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [timeRange]);
 
-    if (loading) {
+    if (loading && !stats) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] text-slate-400 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -244,7 +263,7 @@ const OverviewPage = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
             
             {/* Top Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -256,7 +275,11 @@ const OverviewPage = () => {
                 <div className="flex items-center gap-3">
                     <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
                         {['Live', '1H', '24H', '7D'].map((t) => (
-                            <button key={t} className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${t === 'Live' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                            <button 
+                                key={t} 
+                                onClick={() => setTimeRange(t)}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${timeRange === t ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
                                 {t}
                             </button>
                         ))}
@@ -317,7 +340,7 @@ const OverviewPage = () => {
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {stats.attack_modules.map((module, idx) => (
-                    <ModuleCard key={idx} module={module} />
+                    <ModuleCard key={idx} module={module} timeRange={timeRange} />
                 ))}
             </div>
 
