@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -71,6 +71,10 @@ def restart_server(user = Depends(auth_service.get_current_user)):
 @app.get("/api/waf/custom")
 def get_custom_rules(user = Depends(auth_service.get_current_user)):
     return system_service.get_custom_rules()
+
+@app.get("/api/system/status", response_model=SystemHealth)
+def get_system_status(user = Depends(auth_service.get_current_user)):
+    return system_service.get_system_health()
 
 @app.post("/api/waf/custom", response_model=CommandResponse)
 def save_custom_rules(req: CustomRuleRequest, user = Depends(auth_service.get_current_user)):

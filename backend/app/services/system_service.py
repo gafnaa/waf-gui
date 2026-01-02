@@ -273,3 +273,44 @@ def save_custom_rules(content: str):
         return {"status": "success", "message": "Custom rules saved and applied."}
     except Exception as e:
          return {"status": "error", "message": f"Failed to save rules: {str(e)}"}
+
+def get_system_health():
+    """Retrieves real-time system metrics (Simulated for this demo)"""
+    
+    # Simulate CPU/RAM
+    ram_total = 16.0
+    ram_used = 8.4 + random.uniform(-0.5, 0.5)
+    ram_percent = (ram_used / ram_total) * 100
+    
+    cpu_usage = int(12 + random.uniform(-5, 10))
+    
+    # Simulate Load Avg
+    load_avg = 0.45 + random.uniform(0, 0.2)
+    
+    # Simulate Uptime
+    uptime = "14d 2h 12m"
+    
+    # Simulate Network
+    net_in = int(120 + random.uniform(-20, 30))
+    net_out = int(50 + random.uniform(-10, 10))
+    
+    services = [
+        {"name": "Nginx", "status": "Active", "pid": 1024, "cpu": "2.1%", "uptime": "14d"},
+        {"name": "ModSecurity", "status": "Active", "pid": 1025, "cpu": "5.4%", "uptime": "14d"},
+        {"name": "SSHD", "status": "Sleeping", "pid": 892, "cpu": "0.1%", "uptime": "45d"},
+        {"name": "PostgreSQL", "status": "Active", "pid": 5432, "cpu": "1.2%", "uptime": "3d"},
+    ]
+    
+    return {
+        "uptime": uptime,
+        "ram_usage": {
+            "used": round(ram_used, 1), 
+            "total": ram_total, 
+            "percent": round(ram_percent, 1)
+        },
+        "cpu_usage": cpu_usage,
+        "disk_usage": {"used_percent": 85, "path": "/var/log"},
+        "load_avg": round(load_avg, 2),
+        "network": {"in": net_in, "out": net_out},
+        "services": services
+    }
