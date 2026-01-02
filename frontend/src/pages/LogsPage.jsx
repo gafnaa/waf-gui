@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Download, 
     Activity, 
@@ -8,6 +8,7 @@ import {
     Search, 
     ChevronLeft, 
     ChevronRight,
+    ChevronDown,
     Command
 } from 'lucide-react';
 import { getLogs } from '../services/api';
@@ -117,49 +118,46 @@ const LogsPage = () => {
                 
                 <div className="flex flex-wrap gap-3">
                     {/* Time Filter */}
-                    <div className="flex items-center gap-2 bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2">
-                        <Calendar className="w-4 h-4 text-slate-400" />
-                        <select 
-                            className="bg-transparent text-sm text-slate-300 focus:outline-none cursor-pointer"
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value)}
-                        >
-                            <option>Last 24h</option>
-                            <option>Last Hour</option>
-                            <option>7 Days</option>
-                        </select>
-                    </div>
+                    <CustomSelect 
+                        icon={Calendar}
+                        value={timeRange}
+                        onChange={setTimeRange}
+                        minWidth="min-w-[100px]"
+                        options={[
+                            { value: "Last 24h", label: "Last 24h" },
+                            { value: "Last Hour", label: "Last Hour" },
+                            { value: "7 Days", label: "7 Days" }
+                        ]}
+                    />
 
                     {/* Type Filter */}
-                    <div className="flex items-center gap-2 bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2">
-                        <Filter className="w-4 h-4 text-slate-400" />
-                        <select 
-                            className="bg-transparent text-sm text-slate-300 focus:outline-none cursor-pointer"
-                            value={activeFilter}
-                            onChange={(e) => setActiveFilter(e.target.value)}
-                        >
-                            <option value="All">Type: All</option>
-                            <option value="Attacks Only">Attacks Only</option>
-                            <option value="SQL Injection">SQL Injection</option>
-                            <option value="XSS">XSS</option>
-                            <option value="Scanner">Scanner</option>
-                        </select>
-                    </div>
+                    <CustomSelect 
+                        icon={Filter}
+                        value={activeFilter}
+                        onChange={setActiveFilter}
+                        minWidth="min-w-[110px]"
+                        options={[
+                            { value: "All", label: "Type: All" },
+                            { value: "Attacks Only", label: "Attacks Only" },
+                            { value: "SQL Injection", label: "SQL Injection" },
+                            { value: "XSS", label: "XSS" },
+                            { value: "Scanner", label: "Scanner" }
+                        ]}
+                    />
 
                     {/* Status Filter */}
-                    <div className="flex items-center gap-2 bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2">
-                        <Activity className="w-4 h-4 text-slate-400" />
-                        <select 
-                            className="bg-transparent text-sm text-slate-300 focus:outline-none cursor-pointer"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            <option value="All">Status: All</option>
-                            <option value="403">Blocked (403)</option>
-                            <option value="200">Allowed (200)</option>
-                            <option value="500">Error (500)</option>
-                        </select>
-                    </div>
+                    <CustomSelect 
+                        icon={Activity}
+                        value={statusFilter}
+                        onChange={setStatusFilter}
+                        minWidth="min-w-[110px]"
+                        options={[
+                            { value: "All", label: "Status: All" },
+                            { value: "403", label: "Blocked (403)" },
+                            { value: "200", label: "Allowed (200)" },
+                            { value: "500", label: "Error (500)" }
+                        ]}
+                    />
 
                     <button 
                         onClick={() => fetchLogs()}
@@ -287,6 +285,59 @@ const LogsPage = () => {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+// Helper Custom Select Component
+const CustomSelect = ({ value, onChange, options, icon: Icon, minWidth = "min-w-[120px]" }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selectedLabel = options.find(o => o.value === value)?.label || value;
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex items-center gap-2 bg-slate-950/50 border ${isOpen ? 'border-blue-500/50 ring-1 ring-blue-500/20' : 'border-slate-700'} hover:border-slate-600 rounded-lg pl-3 pr-2 py-2 transition-all group focus:outline-none h-[38px]`}
+            >
+                {Icon && <Icon className="w-4 h-4 text-slate-400" />}
+                <span className={`text-sm text-slate-300 font-sans ${minWidth} text-left truncate mr-2`}>{selectedLabel}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-400' : ''}`} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full left-0 mt-1 w-[calc(100%+20px)] min-w-max bg-slate-900 border border-slate-700 rounded-lg shadow-xl shadow-black/50 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1">
+                    {options.map((opt) => (
+                        <div
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setIsOpen(false);
+                            }}
+                            className={`px-3 py-2 text-sm cursor-pointer rounded-md font-sans transition-colors flex items-center justify-between ${
+                                value === opt.value 
+                                ? 'bg-blue-600/10 text-blue-400 font-medium' 
+                                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                            }`}
+                        >
+                            {opt.label}
+                            {value === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-2" />}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
