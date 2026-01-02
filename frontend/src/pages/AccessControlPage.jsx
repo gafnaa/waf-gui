@@ -135,7 +135,7 @@ const AccessControlPage = () => {
                                         name="action"
                                         value={formData.action}
                                         onChange={handleInputChange}
-                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 appearance-none"
+                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 font-sans focus:outline-none focus:border-blue-500 appearance-none"
                                     >
                                         <option value="deny">Blacklist (Block)</option>
                                         <option value="allow">Whitelist (Allow)</option>
@@ -151,7 +151,7 @@ const AccessControlPage = () => {
                                         name="duration"
                                         value={formData.duration}
                                         onChange={handleInputChange}
-                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 appearance-none"
+                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 font-sans focus:outline-none focus:border-blue-500 appearance-none"
                                     >
                                         <option value="Permanent">Permanent</option>
                                         <option value="24h">Temporary (24 Hours)</option>
@@ -182,13 +182,7 @@ const AccessControlPage = () => {
                         </form>
                     </div>
 
-                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex gap-3">
-                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
-                        <div>
-                            <h4 className="text-sm font-bold text-rose-400">High Threat Activity</h4>
-                            <p className="text-xs text-rose-400/80 mt-1 leading-relaxed">System detected multiple failed login attempts from subnet 10.20.x.x. Recommended action: Temporary Ban.</p>
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Right Column: List */}
@@ -317,8 +311,5 @@ const AccessControlPage = () => {
         </div>
     );
 };
-
-// Import AlertTriangle for the warning card
-import { AlertTriangle } from 'lucide-react';
 
 export default AccessControlPage;
