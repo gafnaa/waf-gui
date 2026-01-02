@@ -10,7 +10,9 @@ import {
   AlertOctagon, 
   CheckCircle2,
   Clock,
-  Globe
+  Globe,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { addWafRule, getActiveIps, deleteIpRule } from '../services/api';
 import { Button } from "../components/ui/button";
@@ -27,6 +29,10 @@ const AccessControlPage = () => {
     });
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         fetchData();
@@ -66,17 +72,32 @@ const AccessControlPage = () => {
     };
 
     const handleBlockIp = async (ip) => {
+        // Optimistic Update
+        setActiveIps(prev => prev.map(item => 
+            item.ip === ip ? { ...item, rule_status: 'Blocked' } : item
+        ));
+        
         try {
             await addWafRule(ip, 'deny', 'Quick Block from Table', 'Permanent');
-            fetchData(true);
-        } catch(e) { console.error(e) }
+            // We rely on the poll to keep consistent, but optimistic gives instant feedback
+        } catch(e) { 
+            console.error(e);
+            fetchData(true); // Re-sync on error
+        }
     };
 
     const handleUnblockIp = async (ip) => {
+        // Optimistic Update
+        setActiveIps(prev => prev.map(item => 
+            item.ip === ip ? { ...item, rule_status: 'None' } : item
+        ));
+
         try {
             await deleteIpRule(ip);
+        } catch(e) { 
+            console.error(e);
             fetchData(true);
-        } catch(e) { console.error(e) }
+        }
     };
 
     const getFlag = (code) => {
@@ -93,6 +114,14 @@ const AccessControlPage = () => {
         item.ip.includes(searchTerm)
     );
 
+    // Pagination Logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredIps.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredIps.length / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -104,6 +133,7 @@ const AccessControlPage = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
                 
                 {/* Left Column: Add Rule Form */}
                 <div className="lg:col-span-4 space-y-6">
@@ -249,7 +279,7 @@ const AccessControlPage = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredIps.map((item, idx) => (
+                                        currentItems.map((item, idx) => (
                                             <tr key={idx} className="group hover:bg-slate-800/20 transition-colors">
                                                 <td className="px-6 py-4">
                                                     {item.rule_status === 'Blocked' ? (
@@ -303,7 +333,28 @@ const AccessControlPage = () => {
                         
                         {/* Footer / Pagination */}
                         <div className="p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-                             <span>Showing <span className="text-slate-300 font-medium">1-{filteredIps.length}</span> of {activeIps.length}</span>
+                             <span>Showing <span className="text-slate-300 font-medium">{filteredIps.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredIps.length)}</span> of {filteredIps.length}</span>
+                             
+                             <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => paginate(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <div className="flex items-center gap-1 px-2">
+                                    <span className="text-slate-300">Page {currentPage}</span>
+                                    <span className="text-slate-600">/ {totalPages || 1}</span>
+                                </div>
+                                <button 
+                                    onClick={() => paginate(currentPage + 1)}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                             </div>
                         </div>
 
                     </div>

@@ -53,6 +53,16 @@ def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "
     if not ip_address:
         return {"status": "error", "message": "IP Address is required"}
 
+    # Check for duplicates
+    if os.path.exists(IP_RULES_FILE):
+        with open(IP_RULES_FILE, "r") as f:
+            content = f.read()
+            # Simple check: search for "deny <ip>;" or "allow <ip>;"
+            # Regex is safer to avoid partial matches (e.g. 1.1 matches 1.1.1.1)
+            pattern = f"\\b{action}\\s+{re.escape(ip_address)};"
+            if re.search(pattern, content):
+                 return {"status": "error", "message": f"Rule for {ip_address} already exists"}
+
     try:
         entry = f"# Meta: {note}|{duration}\n{action} {ip_address};\n"
         
