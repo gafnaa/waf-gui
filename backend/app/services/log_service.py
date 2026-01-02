@@ -4,7 +4,7 @@ import psutil
 import datetime
 import re
 import random
-from collections import deque
+from collections import deque, defaultdict
 from app.core.config import get_settings
 from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
 from app.services import system_service
@@ -32,158 +32,123 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
     # 1. System Stats (Real)
     cpu_load = f"{psutil.cpu_percent()}%"
     
-    # Time filtering logic
+    # 2. Define Time Window and Granularity
     now = datetime.datetime.now(datetime.timezone.utc)
-    start_time = None
     
     if time_range == "1h":
-        start_time = now - datetime.timedelta(hours=1)
+        window_size = datetime.timedelta(hours=1)
+        step = datetime.timedelta(minutes=5) # 12 points
+        label_fmt = "%H:%M"
     elif time_range == "24h":
-        start_time = now - datetime.timedelta(hours=24)
+        window_size = datetime.timedelta(hours=24)
+        step = datetime.timedelta(hours=1) # 24 points
+        label_fmt = "%H:00"
     elif time_range == "7d":
-        start_time = now - datetime.timedelta(days=7)
-    # "live" implies show everything in the current rolling buffer (simulated or real short window)
+        window_size = datetime.timedelta(days=7)
+        step = datetime.timedelta(days=1) # 7 points
+        label_fmt = "%d %b"
+    else: # "live" - default to last 30 minutes
+        window_size = datetime.timedelta(minutes=30)
+        step = datetime.timedelta(minutes=2) # 15 points
+        label_fmt = "%H:%M"
+
+    start_time = now - window_size
     
+    # 3. Initialize Buckets
+    # We calculate how many buckets we need.
+    num_buckets = int(window_size.total_seconds() / step.total_seconds())
+    # Adjust slightly if rounding issues, but fixed numbers are safer for UI.
+    # Let's use flexible buckets.
+    
+    buckets = []
+    bucket_map = {} # index -> TrafficPoint
+    
+    # Pre-fill buckets with correct time labels
+    # We iterate from 0 to num_buckets-1
+    for i in range(num_buckets):
+        bucket_time = start_time + (step * i)
+        # For "live" or "1h", we might want the label to be the END of the bucket or START.
+        # Let's use START of bucket for simplicity.
+        label = bucket_time.strftime(label_fmt)
+        tp = TrafficPoint(time=label, valid=0, blocked=0)
+        buckets.append(tp)
+        # We don't need a map if we index by math, but let's keep list 'buckets' ordered.
+
     total_req = 0
     blocked = 0
+    attacks = defaultdict(int) 
+    # Init keys for API consistency
+    for k in ["sql_injection", "xss", "lfi", "rce", "bad_bots", "brute_force"]:
+        attacks[k] = 0
     
-    attacks = {
-        "sql_injection": 0, "xss": 0, "lfi": 0, "rce": 0, "bad_bots": 0, "brute_force": 0
-    }
-    
-    # Chart Data Handling
-    traffic_data = [] # ... (omitted for brevity, handled below)
-    
-    # Helper to init chart buckets (re-implemented to be sure)
-    if time_range == "24h":
-        num_points = 24
-        for i in range(num_points):
-             h = (now.hour - (num_points - 1) + i) % 24
-             label = f"{h:02d}:00"
-             traffic_data.append(TrafficPoint(time=label, valid=0, blocked=0))
-    elif time_range == "7d":
-        num_points = 7
-        for i in range(num_points):
-             d = now - datetime.timedelta(days=(num_points - 1) - i)
-             label = d.strftime("%d %b")
-             traffic_data.append(TrafficPoint(time=label, valid=0, blocked=0))
-    else: # Live or 1h
-        num_points = 12
-        for i in range(num_points):
-            m = (now.minute - ((num_points - 1) - i) * 5) % 60
-            label = f"{now.hour}:{m:02d}"
-            traffic_data.append(TrafficPoint(time=label, valid=0, blocked=0))
-
-
+    # 4. Read and Process Logs
     if os.path.exists(settings.ACCESS_LOG_PATH):
         try:
             with open(settings.ACCESS_LOG_PATH, "r") as f:
+                # Read all lines - optimization: 
+                # For very large files, we should seek to end and read backwards, 
+                # but "dummy.log" implies manageable size.
                 lines = f.readlines()
                 
                 for line in lines:
-                    log_time = None
-                    # Regex for timestamp in brackets: [01/Jan/2026:14:02:40 +0000]
-                    # Log format: IP - - [TIMESTAMP] "REQ" STATUS SIZE ...
+                    # Quick check to skip obviously old lines if file is huge? 
+                    # Not reliable without sorting.
+                    
+                    # Parse Time
+                    # Log format: IP - - [TIMESTAMP] ...
                     parts = line.split(' [')
                     if len(parts) > 1:
                         time_part = parts[1].split(']')[0]
                         log_time = parse_nginx_time(time_part)
-                    
-                    # Filter Check
-                    if start_time and log_time:
-                         if log_time < start_time:
-                             continue
-                    
-                    # If passed filter ...
-                    if not start_time:
-                         # For 'live', maybe just take last 5 mins? Or 100 lines?
-                         # Let's say Live = last 15 mins for cleaner demo, or just all if small.
-                         # Better: Live = 1 hour but shown minutely.
-                         # Current implementation treats 'live' as 'all log' if no start_time.
-                         # User said "Live to 7D is same", implying logic was failing to filter.
-                         # If start_time is None (Live), we show ALL. But usually Live means "Now".
-                         # Let's un-set start_time for "live" but maybe filter to last 30m?
-                         # For now, if "live", let's behave like 1h but maybe refresh faster? 
-                         # Actually user wants to see DIFFERENCE.
-                         # If Live == 7D result, it means start_time logic failed.
-                         pass 
-                         
-                    total_req += 1
-                    
-                    # If passed filter (or if parsing failed we typically skip or count as 'now')
-                    total_req += 1
-                    line_lower = line.lower()
-                    
-                    # ---------------------------
-                    # CATEGORIZE TRAFFIC (Valid vs Blocked)
-                    # ---------------------------
-                    is_blocked = ' 403 ' in line or ' 401 ' in line
-                    if is_blocked:
-                        blocked += 1
-                    
-                    # ---------------------------
-                    # SYSTEM ATTACK COUNTERS
-                    # ---------------------------
-                    if is_blocked:
-                        if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
-                            attacks["sql_injection"] += 1
-                        elif "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
-                            attacks["xss"] += 1
-                        elif "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
-                            attacks["lfi"] += 1
-                        elif "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
-                            attacks["rce"] += 1
-                        elif "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
-                            attacks["bad_bots"] += 1
-                        elif "login" in line_lower or "admin" in line_lower:
-                            attacks["brute_force"] += 1
-                        else:
-                            attacks["bad_bots"] += 1
-
-                    # ---------------------------
-                    # FILL CHART DATA
-                    # ---------------------------
-                    # We need to map this log_time to one of our buckets in traffic_data
-                    if log_time:
-                        # Find closest bucket
-                        # This is a bit complex for a quick script, let's simplify.
-                        # We'll just randomly fill buckets proportional to total size if we can't map easy.
-                        # OR: just map hour/day.
                         
-                        if time_range == "24h":
-                            # access buckets by hour index?
-                            # traffic_data is list of 24. last is 'now'. 
-                            # Hour diff from now:
-                            diff = int((now - log_time).total_seconds() / 3600)
-                            if 0 <= diff < 24:
-                                idx = 23 - diff
-                                if 0 <= idx < 24:
-                                    if is_blocked: traffic_data[idx].blocked += 1
-                                    else: traffic_data[idx].valid += 1
-                                    
-                        elif time_range == "7d":
-                            diff = int((now - log_time).total_seconds() / 86400)
-                            if 0 <= diff < 7:
-                                idx = 6 - diff
-                                if 0 <= idx < 7:
-                                    if is_blocked: traffic_data[idx].blocked += 1
-                                    else: traffic_data[idx].valid += 1
-                        else:
-                            # 1H or Live -> map by minutes
-                            diff = int((now - log_time).total_seconds() / 300) # 5 min buckets
-                            if 0 <= diff < 12:
-                                idx = 11 - diff
-                                if 0 <= idx < 12:
-                                    if is_blocked: traffic_data[idx].blocked += 1
-                                    else: traffic_data[idx].valid += 1
+                        if log_time:
+                            # Filter
+                            if log_time < start_time:
+                                continue
+                            if log_time > now:
+                                continue # clock skew or future logs?
+                            
+                            # Increment Counters
+                            total_req += 1
+                            is_blocked = ' 403 ' in line or ' 401 ' in line
+                            if is_blocked:
+                                blocked += 1
+                            
+                            line_lower = line.lower()
+                            
+                            # Categorize Attack
+                            if is_blocked:
+                                if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
+                                    attacks["sql_injection"] += 1
+                                elif "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
+                                    attacks["xss"] += 1
+                                elif "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
+                                    attacks["lfi"] += 1
+                                elif "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
+                                    attacks["rce"] += 1
+                                elif "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
+                                    attacks["bad_bots"] += 1
+                                elif "login" in line_lower or "admin" in line_lower:
+                                    attacks["brute_force"] += 1
+                                else:
+                                    attacks["bad_bots"] += 1
+                            
+                            # Map to Bucket
+                            # Index = floor( (log_time - start_time) / step )
+                            # Guard for edge cases
+                            idx = int((log_time - start_time).total_seconds() / step.total_seconds())
+                            
+                            if 0 <= idx < len(buckets):
+                                if is_blocked:
+                                    buckets[idx].blocked += 1
+                                else:
+                                    buckets[idx].valid += 1
 
         except Exception as e:
             print(f"Error reading logs: {e}")
 
     # Fetch current rule configuration
     rules_config = system_service.get_waf_rules()
-    # Map rule ID to status ("Active" if enabled else "Inactive")
-    # IDs in WAF_RULES_DB match the ones we use below (SQL-01, etc)
     rule_status = {r['id']: ("Active" if r['enabled'] else "Inactive") for r in rules_config}
 
     # Build Modules List
@@ -203,5 +168,5 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         cpu_load=cpu_load,
         system_status="OPERATIONAL",
         attack_modules=modules_list,
-        traffic_chart=traffic_data
+        traffic_chart=buckets
     )
