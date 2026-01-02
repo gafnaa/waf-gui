@@ -229,8 +229,12 @@ const ServerMonitorPage = () => {
                         <CheckCircleIcon className="w-3 h-3" />
                         System Online
                     </span>
-                    <button className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
-                        <RefreshCw className="w-4 h-4" />
+                    <button 
+                        onClick={() => fetchStatus(true)}
+                        className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700 hover:bg-slate-700 transition-colors"
+                        title="Refresh Data"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     {/* Notification Bell & Help would go here */}
                 </div>
