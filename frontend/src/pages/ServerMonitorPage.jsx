@@ -13,7 +13,8 @@ import {
   FileText,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 import { 
     AreaChart, 
@@ -34,6 +35,8 @@ const ServerMonitorPage = () => {
     const [loading, setLoading] = useState(true);
     const [history, setHistory] = useState({ cpu: [], net: [] });
     const [notification, setNotification] = useState(null);
+    const [showRestartModal, setShowRestartModal] = useState(false);
+    const [showClearCacheModal, setShowClearCacheModal] = useState(false);
 
     useEffect(() => {
         fetchStatus();
@@ -71,19 +74,27 @@ const ServerMonitorPage = () => {
         }
     };
 
-    const handleRestart = async () => {
-        if (window.confirm("Are you sure you want to restart the Nginx server? This will briefy interrupt traffic.")) {
-            setNotification({ type: 'info', message: 'Initiating server restart...' });
-            try {
-                await restartNginx();
-                setNotification({ type: 'success', message: 'Server restarted successfully' });
-            } catch (e) {
-                setNotification({ type: 'error', message: 'Restart failed: ' + e.message });
-            }
+    const handleRestart = () => {
+        setShowRestartModal(true);
+    };
+
+    const confirmRestart = async () => {
+        setShowRestartModal(false);
+        setNotification({ type: 'info', message: 'Initiating server restart...' });
+        try {
+            await restartNginx();
+            setNotification({ type: 'success', message: 'Server restarted successfully' });
+        } catch (e) {
+            setNotification({ type: 'error', message: 'Restart failed: ' + e.message });
         }
     };
 
-    const handleClearCache = async () => {
+    const handleClearCache = () => {
+        setShowClearCacheModal(true);
+    };
+
+    const confirmClearCache = async () => {
+        setShowClearCacheModal(false);
         setNotification({ type: 'info', message: 'Purging WAF cache...' });
         try {
             await clearWafCache();
@@ -92,7 +103,6 @@ const ServerMonitorPage = () => {
             setNotification({ type: 'error', message: 'Failed to clear cache' });
         }
     };
-
 
 
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
@@ -110,6 +120,79 @@ const ServerMonitorPage = () => {
                     {notification.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-500" />}
                     {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
                     <span className="text-sm font-medium">{notification.message}</span>
+                </div>
+            )}
+
+            {/* Restart Confirmation Modal */}
+            {showRestartModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 border-l-4 border-l-rose-500">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-rose-500/10 rounded-full shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-rose-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-lg font-bold text-slate-100">Restart Server?</h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    Are you sure you want to restart the Nginx server? This will <strong className="text-rose-400">interrupt traffic</strong> for a few seconds while the service reloads.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end mt-4 pt-2">
+                            <button 
+                                onClick={() => setShowRestartModal(false)}
+                                className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmRestart}
+                                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-900/20 transition-all text-sm font-bold flex items-center gap-2"
+                            >
+                                <Power className="w-4 h-4" />
+                                Restart Server
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Clear Cache Confirmation Modal */}
+            {showClearCacheModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 border-l-4 border-l-amber-500">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-amber-500/10 rounded-full shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-lg font-bold text-slate-100">Clear WAF Cache?</h3>
+                                <div className="text-sm text-slate-400 leading-relaxed space-y-2">
+                                    <p>Are you sure you want to clear the entire WAF cache?</p>
+                                    <ul className="list-disc pl-4 space-y-1 text-slate-500">
+                                        <li>This will cause a <strong className="text-amber-400">temporary performance drop</strong>.</li>
+                                        <li>Initial requests will be slower while the cache rebuilds.</li>
+                                        <li>Backend server load may increase significantly.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end mt-4 pt-2">
+                            <button 
+                                onClick={() => setShowClearCacheModal(false)}
+                                className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmClearCache}
+                                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20 transition-all text-sm font-bold flex items-center gap-2"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                Clear Cache
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
