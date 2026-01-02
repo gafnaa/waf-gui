@@ -174,19 +174,21 @@ const ModuleCard = ({ module, timeRange }) => {
 
       <div className="flex justify-between items-end">
         <div>
-           {isActive ? (
              <>
-                <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-bold ${color}`}>
+                <div className="flex items-center gap-2">
+                    <span className={`text-2xl font-bold ${isActive ? color : 'text-slate-500'}`}>
                         <AnimatedNumber value={module.count} />
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{getContextLabel()}</span>
+                    {isActive ? (
+                         <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{getContextLabel()}</span>
+                    ) : (
+                         <span className="text-[10px] font-bold text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-700 tracking-wider">OFF</span>
+                    )}
                 </div>
-                <p className="text-[10px] text-slate-600 mt-1">Last incident: {module.last_incident}</p>
+                <p className="text-[10px] text-slate-600 mt-1">
+                    {isActive ? `Last incident: ${module.last_incident}` : 'Monitoring suspended'}
+                </p>
              </>
-           ) : (
-                <div className="text-xl font-bold text-slate-600 tracking-wide">Inactive</div>
-           )}
         </div>
 
         {/* Mini Bar Chart for Trend */}

@@ -44,6 +44,9 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class CustomRuleRequest(BaseModel):
+    content: str
+
 class RuleToggleRequest(BaseModel):
     rule_id: str
     enable: bool
@@ -51,6 +54,6 @@ class RuleToggleRequest(BaseModel):
 class WafRuleStatus(BaseModel):
     id: str
     name: str
-    description: str
-    is_enabled: bool
+    desc: str
+    enabled: bool
     category: str

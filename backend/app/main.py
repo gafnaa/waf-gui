@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -55,6 +55,14 @@ def add_rule(rule: WafRuleRequest, user = Depends(auth_service.get_current_user)
 @app.post("/api/system/restart", response_model=CommandResponse)
 def restart_server(user = Depends(auth_service.get_current_user)):
     return system_service.restart_nginx()
+
+@app.get("/api/waf/custom")
+def get_custom_rules(user = Depends(auth_service.get_current_user)):
+    return system_service.get_custom_rules()
+
+@app.post("/api/waf/custom", response_model=CommandResponse)
+def save_custom_rules(req: CustomRuleRequest, user = Depends(auth_service.get_current_user)):
+    return system_service.save_custom_rules(req.content)
 
 if __name__ == "__main__":
     import uvicorn

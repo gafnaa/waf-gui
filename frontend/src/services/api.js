@@ -26,6 +26,8 @@ export const getStats = (range = "live") => api.get(`/stats?range=${range}`);
 export const addWafRule = (ip, action) => api.post('/waf/rule', { ip, action });
 export const getRules = () => api.get('/waf/rules');
 export const toggleRule = (rule_id, enable) => api.post('/waf/rules/toggle', { rule_id, enable });
+export const getCustomRules = () => api.get('/waf/custom');
+export const saveCustomRules = (content) => api.post('/waf/custom', { content });
 export const restartNginx = () => api.post('/system/restart');
 
 export default api;
