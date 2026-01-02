@@ -79,6 +79,16 @@ const AccessControlPage = () => {
         } catch(e) { console.error(e) }
     };
 
+    const getFlag = (code) => {
+        if (!code || code === 'Unknown') return '🌐';
+        // Maps 'US' to U+1F1FA U+1F1F8 (🇺🇸)
+        const codePoints = code
+            .toUpperCase()
+            .split('')
+            .map(char =>  127397 + char.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+    };
+
     const filteredIps = activeIps.filter(item => 
         item.ip.includes(searchTerm)
     );
@@ -218,7 +228,7 @@ const AccessControlPage = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-950/30 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-                                        <th className="px-6 py-3 border-b border-slate-800/50 w-12 text-center">ST</th>
+                                        <th className="px-6 py-3 border-b border-slate-800/50 w-24">Status</th>
                                         <th className="px-6 py-3 border-b border-slate-800/50">IP Address</th>
                                         <th className="px-6 py-3 border-b border-slate-800/50 text-right">Requests</th>
                                         <th className="px-6 py-3 border-b border-slate-800/50 text-right">Attacks</th>
@@ -241,16 +251,19 @@ const AccessControlPage = () => {
                                     ) : (
                                         filteredIps.map((item, idx) => (
                                             <tr key={idx} className="group hover:bg-slate-800/20 transition-colors">
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className={`w-2 h-2 rounded-full mx-auto ${item.rule_status === 'Blocked' ? 'bg-rose-500' : (item.attack_count > 0 ? 'bg-amber-500' : 'bg-emerald-500')}`} />
+                                                <td className="px-6 py-4">
+                                                    {item.rule_status === 'Blocked' ? (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/20">BLOCKED</span>
+                                                    ) : item.attack_count > 0 ? (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">ATTACK</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">NORMAL</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-mono text-sm text-slate-200 font-medium">{item.ip}</span>
-                                                        <span className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700">{item.country}</span>
-                                                        {item.rule_status === 'Blocked' && 
-                                                            <span className="text-[10px] bg-rose-500/10 text-rose-500 px-1 rounded border border-rose-500/20">BLOCKED</span>
-                                                        }
+                                                        <span className="text-lg leading-none" title={item.country}>{getFlag(item.country)}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -267,15 +280,16 @@ const AccessControlPage = () => {
                                                     {item.rule_status === 'Blocked' ? (
                                                         <button 
                                                             onClick={() => handleUnblockIp(item.ip)}
-                                                            className="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                                                            className="cursor-pointer text-xs font-medium px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-white shadow-sm transition-all active:scale-95"
                                                         >
                                                             Unblock
                                                         </button>
                                                     ) : (
                                                         <button 
                                                             onClick={() => handleBlockIp(item.ip)}
-                                                            className="text-xs px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors"
+                                                            className="cursor-pointer text-xs font-semibold px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/20 transition-all active:scale-95 flex items-center gap-1 ml-auto"
                                                         >
+                                                            <Shield className="w-3 h-3" />
                                                             Block IP
                                                         </button>
                                                     )}
