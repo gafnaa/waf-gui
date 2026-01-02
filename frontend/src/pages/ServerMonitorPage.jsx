@@ -27,7 +27,7 @@ import {
     LineChart,
     Line
 } from 'recharts';
-import { getSystemStatus, restartNginx, clearWafCache } from '../services/api';
+import { getSystemStatus, restartNginx, clearWafCache, manageService } from '../services/api';
 import { Button } from "../components/ui/button";
 
 const ServerMonitorPage = () => {
@@ -86,6 +86,24 @@ const ServerMonitorPage = () => {
             setNotification({ type: 'success', message: 'Server restarted successfully' });
         } catch (e) {
             setNotification({ type: 'error', message: 'Restart failed: ' + e.message });
+        }
+    };
+
+    const handleServiceAction = async (serviceId, action, serviceName) => {
+        // Prevent stopping SSH to avoid lockout, effectively disable it for now or warn
+        if (serviceId === 'ssh' && action === 'stop') {
+             if (!window.confirm("Stopping SSH will lock you out of the server. Are you sure?")) return;
+        }
+
+        const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+        setNotification({ type: 'info', message: `${actionLabel}ing ${serviceName}...` });
+        
+        try {
+            await manageService(serviceId, action);
+            setNotification({ type: 'success', message: `${serviceName} ${action}ed successfully` });
+            fetchStatus(true); // Refresh data
+        } catch (e) {
+            setNotification({ type: 'error', message: `Action failed: ${e.response?.data?.message || e.message}` });
         }
     };
 
@@ -383,12 +401,31 @@ const ServerMonitorPage = () => {
                                         <td className="px-4 py-3 font-mono text-slate-400">{svc.pid}</td>
                                         <td className="px-4 py-3 font-mono text-slate-300">{svc.cpu}</td>
                                         <td className="px-4 py-3 text-right flex justify-end gap-2">
-                                            <button className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white" title="Restart">
+                                            <button 
+                                                onClick={() => handleServiceAction(svc.id, 'restart', svc.name)}
+                                                className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors" 
+                                                title="Restart"
+                                            >
                                                 <RotateCcw className="w-3.5 h-3.5" />
                                             </button>
-                                            <button className="p-1 hover:bg-rose-500/20 rounded text-slate-400 hover:text-rose-400" title="Stop">
-                                                <Power className="w-3.5 h-3.5" />
-                                            </button>
+                                            
+                                            {svc.status === 'Active' ? (
+                                                <button 
+                                                    onClick={() => handleServiceAction(svc.id, 'stop', svc.name)}
+                                                    className="p-1 hover:bg-rose-500/20 rounded text-slate-400 hover:text-rose-400 transition-colors" 
+                                                    title="Stop"
+                                                >
+                                                    <Power className="w-3.5 h-3.5" />
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleServiceAction(svc.id, 'start', svc.name)}
+                                                    className="p-1 hover:bg-emerald-500/20 rounded text-slate-400 hover:text-emerald-400 transition-colors" 
+                                                    title="Start"
+                                                >
+                                                    <Zap className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

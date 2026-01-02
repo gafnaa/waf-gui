@@ -84,6 +84,10 @@ def save_custom_rules(req: CustomRuleRequest, user = Depends(auth_service.get_cu
 def clear_cache(user = Depends(auth_service.get_current_user)):
     return system_service.clear_cache()
 
+@app.post("/api/system/services/{service_name}/{action}", response_model=CommandResponse)
+def manage_service_endpoint(service_name: str, action: str, user = Depends(auth_service.get_current_user)):
+    return system_service.manage_service(service_name, action)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
