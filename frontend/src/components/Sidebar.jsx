@@ -54,7 +54,7 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2 no-scrollbar">
          {menuItems.map((item) => {
              const Icon = item.icon;
              const isActive = location.pathname.startsWith(item.path);
