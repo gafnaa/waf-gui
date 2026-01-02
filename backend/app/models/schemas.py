@@ -45,6 +45,14 @@ class IpRule(BaseModel):
     region: str = "Unknown" # Placeholder for GeoIP
     status: str = "Active"
 
+class ActiveIp(BaseModel):
+    ip: str
+    country: str
+    request_count: int
+    attack_count: int
+    last_seen: str
+    rule_status: str # 'None', 'Blocked', 'Allowed'
+
 class CommandResponse(BaseModel):
     status: str
     message: str

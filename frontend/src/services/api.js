@@ -24,6 +24,7 @@ export const loginUser = (username, password) => {
 
 export const getStats = (range = "live") => api.get(`/stats?range=${range}`);
 export const addWafRule = (ip, action, note = "", duration = "Permanent") => api.post('/waf/rule', { ip, action, note, duration });
+export const getActiveIps = () => api.get('/waf/active-ips');
 export const getIpRules = () => api.get('/waf/ip-rules');
 export const deleteIpRule = (ip) => api.delete(`/waf/rule?ip=${ip}`);
 export const getRules = () => api.get('/waf/rules');

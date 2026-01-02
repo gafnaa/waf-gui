@@ -161,3 +161,73 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         attack_modules=modules_list,
         traffic_chart=buckets
     )
+
+def get_active_ips(window_minutes: int = 60):
+    from app.models.schemas import ActiveIp
+    
+    # 1. Get Current Rules
+    rules = system_service.get_ip_rules()
+    # Map IP -> Action ('deny', 'allow')
+    rule_map = {r['ip']: r['action'] for r in rules}
+    
+    # 2. Parse Logs
+    ip_stats = defaultdict(lambda: {"req": 0, "atk": 0, "last": datetime.datetime.min})
+    
+    now = datetime.datetime.now(datetime.timezone.utc)
+    start_time = now - datetime.timedelta(minutes=window_minutes)
+    
+    if os.path.exists(settings.ACCESS_LOG_PATH):
+        try:
+            with open(settings.ACCESS_LOG_PATH, "r") as f:
+                lines = f.readlines()
+                # Debug: if lines is huge, we might want to slice the last N lines to be faster
+                # But for < 100k lines it's fine.
+                
+                for line in lines:
+                    parts = line.split(' [')
+                    if len(parts) > 1:
+                        ip = line.split(' - -')[0].strip()
+                        time_part = parts[1].split(']')[0]
+                        dt = parse_nginx_time(time_part)
+                        
+                        # Fallback if parsing fails to ensure data visibility
+                        if dt is None:
+                             dt = now 
+
+                        if dt >= start_time:
+                            s = ip_stats[ip]
+                            s["req"] += 1
+                            if s["last"] == datetime.datetime.min or dt > s["last"]:
+                                s["last"] = dt
+                            
+                            if ' 403 ' in line or ' 401 ' in line:
+                                s["atk"] += 1
+                                
+        except Exception as e:
+            print(f"Error parse active ips: {e}")
+
+    # 3. Format Result
+    results = []
+    countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
+    
+    for ip, stats in ip_stats.items():
+        # Determine Status
+        r_status = "None"
+        if ip in rule_map:
+            r_status = "Blocked" if rule_map[ip] == "deny" else "Allowed"
+            
+        # Fake Country (deterministic by IP)
+        c_idx = sum(map(ord, ip)) % len(countries)
+        
+        results.append(ActiveIp(
+            ip=ip,
+            country=countries[c_idx],
+            request_count=stats["req"],
+            attack_count=stats["atk"],
+            last_seen=stats["last"].strftime("%H:%M:%S"),
+            rule_status=r_status
+        ))
+        
+    # Sort by activity (desc)
+    results.sort(key=lambda x: x.request_count, reverse=True)
+    return results[:50] # Top 50
