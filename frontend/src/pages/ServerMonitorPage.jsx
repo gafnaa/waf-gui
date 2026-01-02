@@ -384,18 +384,18 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
     return (
         <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group">
             <div className="flex justify-between items-start mb-4">
-                <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
-                    <div className="flex items-baseline gap-2 mt-1">
-                        <h3 className="text-2xl font-bold text-white">{value}</h3>
+                <div className="min-w-0 flex-1 mr-2">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">{title}</p>
+                    <div className="flex flex-wrap items-baseline gap-2 mt-1">
+                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-none whitespace-nowrap">{value}</h3>
                         {subValue && (
-                            <span className={`text-xs font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-400'} px-1.5 py-0.5 rounded`}>
+                            <span className={`text-[10px] font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} px-1.5 py-0.5 rounded uppercase tracking-wider`}>
                                 {subValue}
                             </span>
                         )}
                     </div>
                 </div>
-                <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors`}>
+                <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors shrink-0`}>
                     <Icon className={`w-5 h-5 ${textColors[color]}`} />
                 </div>
             </div>
