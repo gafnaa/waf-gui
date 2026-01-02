@@ -86,15 +86,7 @@ const AccessControlPage = () => {
                     <h2 className="text-2xl font-bold text-white tracking-tight">Access Control (IP Management)</h2>
                     <p className="text-sm text-slate-500">Manage network access policies, blocklists, and whitelists.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg">
-                        <span className="text-xs font-semibold text-slate-400">WAF ENGINE</span>
-                        <div className="w-8 h-4 bg-emerald-500/20 rounded-full relative">
-                            <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-emerald-500 rounded-full shadow-sm" />
-                        </div>
-                        <span className="text-xs font-bold text-emerald-500 ml-1">Active</span>
-                     </div>
-                </div>
+
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
