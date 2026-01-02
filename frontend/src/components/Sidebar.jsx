@@ -1,22 +1,32 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Shield, 
   Lock, 
   Server, 
   FileText, 
-  Settings 
+  Settings,
+  LogOut 
 } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'rules', label: 'WAF Management', icon: Shield },
-    { id: 'access-control', label: 'Access Control', icon: Lock },
-    { id: 'server-monitor', label: 'Server Monitor', icon: Server },
-    { id: 'logs', label: 'Logs', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { path: '/overview', label: 'Overview', icon: LayoutDashboard },
+    { path: '/rules', label: 'WAF Management', icon: Shield },
+    { path: '/access-control', label: 'Access Control', icon: Lock },
+    { path: '/server-monitor', label: 'Server Monitor', icon: Server },
+    { path: '/logs', label: 'Logs', icon: FileText },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
+
+  const handleLogout = () => {
+      localStorage.removeItem('token');
+      navigate('/login');
+  };
 
   return (
     <aside className="w-64 bg-slate-900 h-screen fixed left-0 top-0 border-r border-slate-800 flex flex-col z-50">
@@ -47,12 +57,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2">
          {menuItems.map((item) => {
              const Icon = item.icon;
-             const isActive = activeTab === item.id;
+             const isActive = location.pathname.startsWith(item.path);
              
              return (
                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 group ${
                         isActive 
                         ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20 shadow-sm' 
@@ -67,7 +77,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       </nav>
 
       {/* Footer Info */}
-      <div className="p-4 border-t border-slate-800/50">
+      <div className="p-4 border-t border-slate-800/50 space-y-2">
           <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
                   <span className="text-xs font-bold text-slate-400">AP</span>
@@ -77,6 +87,13 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   <p className="text-xs text-slate-500 truncate">Security Admin</p>
               </div>
           </div>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-500 hover:text-rose-400 transition-colors"
+          >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+          </button>
       </div>
     </aside>
   );

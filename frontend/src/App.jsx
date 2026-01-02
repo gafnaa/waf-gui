@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, Bell } from 'lucide-react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import RulesPage from './pages/RulesPage';
 import LoginPage from './pages/LoginPage';
@@ -20,55 +20,56 @@ const PlaceholderPage = ({ title }) => (
     </div>
 );
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // Default to overview
-
-  // Check Login on App Load
-  useEffect(() => {
+// Protected route wrapper
+const ProtectedRoute = () => {
     const token = localStorage.getItem('token');
-    if (token) {
-        setIsAuthenticated(true);
+    if (!token) {
+        return <Navigate to="/login" replace />;
     }
-  }, []);
+    return <Outlet />;
+};
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
+// Layout for dashboard pages
+const DashboardLayout = () => {
+    return (
+        <div className="min-h-screen bg-[#050A18] text-slate-200 font-sans flex overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar />
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-[#050A18] text-slate-200 font-sans flex overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Main Content Area */}
-      <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto">
-        
-        {/* Global Header (Optional - usually page specific but we can keep a top bar if needed) */}
-        {/* For this design, headers are inside pages, but we can add a user/notif bar here if we want global access */}
-        
-        {/* Page Content */}
-        <div className="max-w-7xl mx-auto">
-            <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out">
-                {activeTab === 'overview' && <OverviewPage />}
-                {activeTab === 'rules' && <RulesPage />}
-                {activeTab === 'access-control' && <PlaceholderPage title="Access Control" />}
-                {activeTab === 'server-monitor' && <PlaceholderPage title="Server Monitor" />}
-                {activeTab === 'logs' && <PlaceholderPage title="System Logs" />}
-                {activeTab === 'settings' && <PlaceholderPage title="System Configuration" />}
-            </div>
+            {/* Main Content Area */}
+            <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto">
+                <div className="max-w-7xl mx-auto">
+                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out">
+                        <Outlet />
+                    </div>
+                </div>
+            </main>
         </div>
-      </main>
-    </div>
+    );
+};
+
+function App() {
+  return (
+    <Router>
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            
+            <Route path="/" element={<ProtectedRoute />}>
+                <Route element={<DashboardLayout />}>
+                    <Route index element={<Navigate to="/overview" replace />} />
+                    <Route path="overview" element={<OverviewPage />} />
+                    <Route path="rules" element={<RulesPage />} />
+                    <Route path="access-control" element={<PlaceholderPage title="Access Control" />} />
+                    <Route path="server-monitor" element={<PlaceholderPage title="Server Monitor" />} />
+                    <Route path="logs" element={<PlaceholderPage title="System Logs" />} />
+                    <Route path="settings" element={<PlaceholderPage title="System Configuration" />} />
+                </Route>
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    </Router>
   );
 }
 

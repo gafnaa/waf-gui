@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, User, Key, Eye, EyeOff, Circle } from 'lucide-react';
 import { loginUser } from '../services/api';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 
-const LoginPage = ({ onLoginSuccess }) => {
+const LoginPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -33,9 +35,12 @@ const LoginPage = ({ onLoginSuccess }) => {
       
       if (token) {
         localStorage.setItem('token', token);
+        navigate('/'); // Redirect to dashboard
+      } else {
+        // Fallback for demo if no backend token but success
+        navigate('/'); 
       }
       
-      onLoginSuccess();
     } catch (err) {
       console.error(err);
       setError("Invalid credentials. Please try again.");
