@@ -90,3 +90,20 @@ class SystemHealth(BaseModel):
     load_avg: float
     network: dict # {"in": 120, "out": 50}
     services: List[ServiceStatus]
+
+class WafLogEntry(BaseModel):
+    id: int
+    timestamp: str
+    source_ip: str
+    method: str
+    path: str
+    attack_type: str # 'SQL Injection', 'XSS', 'Safe', etc.
+    status_code: int
+    country: str
+
+class WafLogListResponse(BaseModel):
+    data: List[WafLogEntry]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

@@ -4,6 +4,7 @@ import psutil
 import datetime
 import re
 import random
+import math
 from collections import deque, defaultdict
 from app.core.config import get_settings
 from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
@@ -231,3 +232,119 @@ def get_active_ips(window_minutes: int = 60):
     # Sort by activity (desc)
     results.sort(key=lambda x: x.request_count, reverse=True)
     return results[:50] # Top 50
+
+def get_attack_type(line: str, status_code: int) -> str:
+    line_lower = line.lower()
+    
+    # Check for specific patterns
+    if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
+        return "SQL Injection"
+    if "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
+        return "XSS"
+    if "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
+        return "Path Traversal"
+    if "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
+        return "RCE"
+    if "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
+        return "Scanner"
+    if "head /" in line_lower: # Simple heuristic
+        return "Scanner"
+    
+    if status_code >= 400 and status_code < 500:
+         return "Suspicious"
+         
+    return "Safe"
+
+def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str = None, attack_type: str = None):
+    from app.models.schemas import WafLogEntry, WafLogListResponse
+    
+    logs = []
+    
+    if os.path.exists(settings.ACCESS_LOG_PATH):
+        try:
+            with open(settings.ACCESS_LOG_PATH, "r") as f:
+                # Read all lines (inefficient for gb logs, but fine here)
+                lines = f.readlines()
+                
+                # Parse in reverse to show newest first
+                for i, line in enumerate(reversed(lines)):
+                    # Parsing Logic
+                    # Example: 192.168.1.45 - - [27/Oct/2023:14:02:11 +0000] "POST /admin/login.php HTTP/1.1" 403 ...
+                    try:
+                        parts = line.split(' [')
+                        if len(parts) < 2: continue
+                        
+                        ip_part = line.split(' - -')[0].strip()
+                        time_part = parts[1].split(']')[0]
+                        
+                        # Request line
+                        rest = parts[1].split(']')[1]
+                        req_parts = rest.split('"')
+                        if len(req_parts) < 2: continue
+                        
+                        request_line = req_parts[1] # POST /admin/login.php HTTP/1.1
+                        req_tokens = request_line.split()
+                        method = req_tokens[0] if len(req_tokens) > 0 else "-"
+                        path = req_tokens[1] if len(req_tokens) > 1 else "-"
+                        
+                        # Status Code
+                        status_part = rest.split('"')[2].strip().split()[0]
+                        status_code = int(status_part) if status_part.isdigit() else 0
+                        
+                        # Determine Attack Type
+                        # If status 200/302 usually safe unless it's a false negative, but for UI we assume status code hints too?
+                        # Actually we should inspect signatures.
+                        current_type = get_attack_type(line, status_code)
+                        if status_code == 200 and current_type == "Suspicious":
+                            current_type = "Safe" # Correction
+                        
+                        # Filtering
+                        if search:
+                            s = search.lower()
+                            if s not in ip_part.lower() and s not in path.lower() and s not in current_type.lower():
+                                continue
+                                
+                        if status and status != "All":
+                             # Expecting '2xx', '4xx', '5xx' or specific
+                             pass # Implement if needed
+                        
+                        if attack_type and attack_type != "All":
+                            if attack_type == "Attacks Only" and current_type == "Safe":
+                                continue
+                            if attack_type != "Attacks Only" and current_type != attack_type:
+                                # Loose match for logic
+                                pass
+                        
+                        # Fake Country
+                        countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
+                        c_idx = sum(map(ord, ip_part)) % len(countries)
+                        
+                        logs.append(WafLogEntry(
+                            id=i,
+                            timestamp=time_part,
+                            source_ip=ip_part,
+                            method=method,
+                            path=path,
+                            attack_type=current_type,
+                            status_code=status_code,
+                            country=countries[c_idx]
+                        ))
+                    except Exception:
+                        continue
+                        
+        except Exception as e:
+            print(f"Error parse logs: {e}")
+            
+    # Pagination
+    total = len(logs)
+    start = (page - 1) * limit
+    end = start + limit
+    data = logs[start:end]
+    
+    return WafLogListResponse(
+        data=data,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=math.ceil(total / limit)
+    )

@@ -35,5 +35,6 @@ export const restartNginx = () => api.post('/system/restart');
 export const getSystemStatus = () => api.get('/system/status');
 export const clearWafCache = () => api.post('/system/clear-cache');
 export const manageService = (serviceName, action) => api.post(`/system/services/${serviceName}/${action}`);
+export const getLogs = (params) => api.get('/logs', { params });
 
 export default api;
