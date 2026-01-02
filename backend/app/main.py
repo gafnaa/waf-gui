@@ -80,6 +80,10 @@ def get_system_status(user = Depends(auth_service.get_current_user)):
 def save_custom_rules(req: CustomRuleRequest, user = Depends(auth_service.get_current_user)):
     return system_service.save_custom_rules(req.content)
 
+@app.post("/api/system/clear-cache", response_model=CommandResponse)
+def clear_cache(user = Depends(auth_service.get_current_user)):
+    return system_service.clear_cache()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

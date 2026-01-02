@@ -10,7 +10,10 @@ import {
   Terminal,
   Power,
   RotateCcw,
-  FileText
+  FileText,
+  CheckCircle,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { 
     AreaChart, 
@@ -23,19 +26,27 @@ import {
     LineChart,
     Line
 } from 'recharts';
-import { getSystemStatus, restartNginx } from '../services/api';
+import { getSystemStatus, restartNginx, clearWafCache } from '../services/api';
 import { Button } from "../components/ui/button";
 
 const ServerMonitorPage = () => {
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [history, setHistory] = useState({ cpu: [], net: [] });
+    const [notification, setNotification] = useState(null);
 
     useEffect(() => {
         fetchStatus();
         const interval = setInterval(() => fetchStatus(true), 2000); // Fast Polling for "Real-time" feel
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
 
     const fetchStatus = async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -62,19 +73,50 @@ const ServerMonitorPage = () => {
 
     const handleRestart = async () => {
         if (window.confirm("Are you sure you want to restart the Nginx server? This will briefy interrupt traffic.")) {
+            setNotification({ type: 'info', message: 'Initiating server restart...' });
             try {
                 await restartNginx();
-                alert("Restart command sent.");
+                setNotification({ type: 'success', message: 'Server restarted successfully' });
             } catch (e) {
-                alert("Failed to restart: " + e.message);
+                setNotification({ type: 'error', message: 'Restart failed: ' + e.message });
             }
         }
+    };
+
+    const handleClearCache = async () => {
+        setNotification({ type: 'info', message: 'Purging WAF cache...' });
+        try {
+            await clearWafCache();
+            setNotification({ type: 'success', message: 'WAF Cache cleared successfully' });
+        } catch (e) {
+            setNotification({ type: 'error', message: 'Failed to clear cache' });
+        }
+    };
+
+    const handleViewLogs = () => {
+        setNotification({ type: 'info', message: 'Fetching access logs...' });
+        // Future: Navigate to logs page
+        // navigate('/logs');
     };
 
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+             {/* Notification Toast */}
+            {notification && (
+                <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-xl border flex items-center gap-3 animate-in slide-in-from-right-10 duration-300 ${
+                    notification.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' :
+                    notification.type === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' :
+                    'bg-blue-950/90 border-blue-500/50 text-blue-200'
+                }`}>
+                    {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-500" />}
+                    {notification.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-500" />}
+                    {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
+                    <span className="text-sm font-medium">{notification.message}</span>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
@@ -282,7 +324,7 @@ const ServerMonitorPage = () => {
                 <div className="space-y-4">
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
                     
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group">
+                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group" onClick={handleClearCache}>
                         <div className="p-3 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
                             <RefreshCw className="w-5 h-5 text-blue-500" />
                         </div>
@@ -292,7 +334,7 @@ const ServerMonitorPage = () => {
                         </div>
                     </div>
 
-                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group">
+                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group" onClick={handleViewLogs}>
                         <div className="p-3 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
                             <FileText className="w-5 h-5 text-blue-500" />
                         </div>

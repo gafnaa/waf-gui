@@ -274,6 +274,23 @@ def save_custom_rules(content: str):
     except Exception as e:
          return {"status": "error", "message": f"Failed to save rules: {str(e)}"}
 
+def clear_cache():
+    """Clears Nginx cache and temporary files"""
+    try:
+        if os.name == 'nt':
+            # Windows/Dev: Just simulate
+            import time
+            time.sleep(1) # Simulate work
+            return {"status": "success", "message": "Cache cleared successfully (Simulation)"}
+        else:
+            # Linux: Clear nginx cache directories
+            # Assuming standard paths
+            subprocess.run("sudo rm -rf /var/cache/nginx/*", shell=True, check=True)
+            restart_nginx() # Reload to clear memory cache
+            return {"status": "success", "message": "Nginx cache cleared"}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
+
 def get_system_health():
     """Retrieves real-time system metrics (Simulated for this demo)"""
     
