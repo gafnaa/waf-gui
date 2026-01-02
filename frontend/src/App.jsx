@@ -1,9 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import RulesPage from './pages/RulesPage';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
+import AccessControlPage from './pages/AccessControlPage';
 
 // Placeholder Components for missing pages
 const PlaceholderPage = ({ title }) => (
@@ -31,6 +32,8 @@ const ProtectedRoute = () => {
 
 // Layout for dashboard pages
 const DashboardLayout = () => {
+    const location = useLocation();
+
     return (
         <div className="min-h-screen bg-[#050A18] text-slate-200 font-sans flex overflow-hidden">
             {/* Sidebar */}
@@ -39,7 +42,10 @@ const DashboardLayout = () => {
             {/* Main Content Area */}
             <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto">
                 <div className="max-w-7xl mx-auto">
-                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out">
+                    <div 
+                        key={location.pathname}
+                        className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out"
+                    >
                         <Outlet />
                     </div>
                 </div>
@@ -59,7 +65,7 @@ function App() {
                     <Route index element={<Navigate to="/overview" replace />} />
                     <Route path="overview" element={<OverviewPage />} />
                     <Route path="rules" element={<RulesPage />} />
-                    <Route path="access-control" element={<PlaceholderPage title="Access Control" />} />
+                    <Route path="access-control" element={<AccessControlPage />} />
                     <Route path="server-monitor" element={<PlaceholderPage title="Server Monitor" />} />
                     <Route path="logs" element={<PlaceholderPage title="System Logs" />} />
                     <Route path="settings" element={<PlaceholderPage title="System Configuration" />} />

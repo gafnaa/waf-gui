@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -50,7 +50,19 @@ def toggle_rule(req: RuleToggleRequest, user = Depends(auth_service.get_current_
 
 @app.post("/api/waf/rule", response_model=CommandResponse)
 def add_rule(rule: WafRuleRequest, user = Depends(auth_service.get_current_user)):
-    return system_service.add_waf_rule(str(rule.ip), rule.action)
+    return system_service.add_waf_rule(str(rule.ip), rule.action, rule.note, rule.duration)
+
+@app.get("/api/waf/ip-rules", response_model=List[IpRule])
+def get_ip_rules(user = Depends(auth_service.get_current_user)):
+    return system_service.get_ip_rules()
+
+@app.get("/api/waf/active-ips", response_model=List[ActiveIp])
+def get_active_ips(user = Depends(auth_service.get_current_user)):
+    return log_service.get_active_ips()
+
+@app.delete("/api/waf/rule", response_model=CommandResponse)
+def delete_rule(ip: str, user = Depends(auth_service.get_current_user)):
+    return system_service.delete_ip_rule(ip)
 
 @app.post("/api/system/restart", response_model=CommandResponse)
 def restart_server(user = Depends(auth_service.get_current_user)):

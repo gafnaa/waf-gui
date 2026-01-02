@@ -89,15 +89,88 @@ def generate_log_line():
     log_line = f'{ip} - - {timestamp} "{method} {path} HTTP/1.1" {status} {size} "{referer}" "{ua}"'
     return log_line
 
+def get_disabled_rules():
+    disabled = set()
+    exclusion_file = os.path.join(os.path.dirname(__file__), "dummy_waf_exclusions.conf")
+    if os.path.exists(exclusion_file):
+        try:
+            with open(exclusion_file, "r") as f:
+                content = f.read()
+                # Content format: SecRuleRemoveById ID
+                for line in content.splitlines():
+                    if "SecRuleRemoveById" in line:
+                        parts = line.strip().split()
+                        if len(parts) >= 2:
+                            disabled.add(parts[1])
+        except:
+            pass
+    return disabled
+
+RULES_MAP = {
+    "sql_injection": "SQL-01",
+    "xss": "XSS-02",
+    "lfi": "LFI-03",
+    "rce": "RCE-04",
+    "bad_bots": "BOT-05",
+    "brute_force": "BF-06"
+}
+
 print(f"Generating dummy logs to: {LOG_FILE_PATH}")
 print("Press Ctrl+C to stop.")
 
 try:
     while True:
+        # Update config live
+        disabled_rules = get_disabled_rules()
+        
         with open(LOG_FILE_PATH, "a") as f:
             # Write a burst of requests
             for _ in range(random.randint(1, 5)):
-                f.write(generate_log_line() + "\n")
+                # Generate Line logic inline or via modified function
+                # We'll pull generate_log_line logic here or pass args to it.
+                # To cleanly refactor without rewriting whole file structure in replace_block:
+                
+                # --- Quick Inline Generation with Logic ---
+                ip = f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(0,255)}"
+                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("[%d/%b/%Y:%H:%M:%S +0000]")
+                
+                if random.random() > 0.3:
+                    # Normal
+                    method = "GET"
+                    path = random.choice(paths)
+                    status = 200
+                    size = random.randint(500, 5000)
+                    ua = user_agents[random.randint(0, 2)]
+                    referer = "-"
+                else:
+                    # Attack
+                    pattern = random.choice(attack_patterns)
+                    method = "GET" if random.random() > 0.5 else "POST"
+                    path = pattern[0]
+                    base_status = pattern[1]
+                    attack_type = pattern[2]
+                    
+                    # WAF SIMULATION LOGIC:
+                    # If rule is disabled, we ALLOW it (200), effectively "Not Blocking".
+                    rule_id = RULES_MAP.get(attack_type)
+                    if rule_id and rule_id in disabled_rules:
+                        status = 200 # Allowed
+                    else:
+                        status = base_status # Blocked (usually)
+                    
+                    # UA Logic
+                    if attack_type == "bad_bots":
+                        ua = "Nmap Scripting Engine"
+                    elif attack_type == "sql_injection":
+                         ua = "sqlmap/1.5.10#stable" if random.random() > 0.5 else user_agents[0]
+                    else:
+                        ua = user_agents[random.randint(0, 6)]
+                        
+                    size = random.randint(100, 1000)
+                    referer = "-"
+
+                log_line = f'{ip} - - {timestamp} "{method} {path} HTTP/1.1" {status} {size} "{referer}" "{ua}"'
+                f.write(log_line + "\n")
         
         # Sleep a bit to simulate real traffic time
         time.sleep(random.uniform(0.1, 1.0))

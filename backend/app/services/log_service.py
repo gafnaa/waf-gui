@@ -81,19 +81,17 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
     for k in ["sql_injection", "xss", "lfi", "rce", "bad_bots", "brute_force"]:
         attacks[k] = 0
     
+    # Fetch current rule configuration
+    rules_config = system_service.get_waf_rules()
+    rule_status = {r['id']: ("Active" if r['enabled'] else "Inactive") for r in rules_config}
+    
     # 4. Read and Process Logs
     if os.path.exists(settings.ACCESS_LOG_PATH):
         try:
             with open(settings.ACCESS_LOG_PATH, "r") as f:
-                # Read all lines - optimization: 
-                # For very large files, we should seek to end and read backwards, 
-                # but "dummy.log" implies manageable size.
                 lines = f.readlines()
                 
                 for line in lines:
-                    # Quick check to skip obviously old lines if file is huge? 
-                    # Not reliable without sorting.
-                    
                     # Parse Time
                     # Log format: IP - - [TIMESTAMP] ...
                     parts = line.split(' [')
@@ -106,15 +104,15 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
                             if log_time < start_time:
                                 continue
                             if log_time > now:
-                                continue # clock skew or future logs?
+                                continue 
+                            
+                            line_lower = line.lower()
                             
                             # Increment Counters
                             total_req += 1
                             is_blocked = ' 403 ' in line or ' 401 ' in line
                             if is_blocked:
                                 blocked += 1
-                            
-                            line_lower = line.lower()
                             
                             # Categorize Attack
                             if is_blocked:
@@ -134,10 +132,7 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
                                     attacks["bad_bots"] += 1
                             
                             # Map to Bucket
-                            # Index = floor( (log_time - start_time) / step )
-                            # Guard for edge cases
                             idx = int((log_time - start_time).total_seconds() / step.total_seconds())
-                            
                             if 0 <= idx < len(buckets):
                                 if is_blocked:
                                     buckets[idx].blocked += 1
@@ -146,10 +141,6 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
 
         except Exception as e:
             print(f"Error reading logs: {e}")
-
-    # Fetch current rule configuration
-    rules_config = system_service.get_waf_rules()
-    rule_status = {r['id']: ("Active" if r['enabled'] else "Inactive") for r in rules_config}
 
     # Build Modules List
     modules_list = [
@@ -170,3 +161,73 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         attack_modules=modules_list,
         traffic_chart=buckets
     )
+
+def get_active_ips(window_minutes: int = 60):
+    from app.models.schemas import ActiveIp
+    
+    # 1. Get Current Rules
+    rules = system_service.get_ip_rules()
+    # Map IP -> Action ('deny', 'allow')
+    rule_map = {r['ip']: r['action'] for r in rules}
+    
+    # 2. Parse Logs
+    ip_stats = defaultdict(lambda: {"req": 0, "atk": 0, "last": datetime.datetime.min})
+    
+    now = datetime.datetime.now(datetime.timezone.utc)
+    start_time = now - datetime.timedelta(minutes=window_minutes)
+    
+    if os.path.exists(settings.ACCESS_LOG_PATH):
+        try:
+            with open(settings.ACCESS_LOG_PATH, "r") as f:
+                lines = f.readlines()
+                # Debug: if lines is huge, we might want to slice the last N lines to be faster
+                # But for < 100k lines it's fine.
+                
+                for line in lines:
+                    parts = line.split(' [')
+                    if len(parts) > 1:
+                        ip = line.split(' - -')[0].strip()
+                        time_part = parts[1].split(']')[0]
+                        dt = parse_nginx_time(time_part)
+                        
+                        # Fallback if parsing fails to ensure data visibility
+                        if dt is None:
+                             dt = now 
+
+                        if dt >= start_time:
+                            s = ip_stats[ip]
+                            s["req"] += 1
+                            if s["last"] == datetime.datetime.min or dt > s["last"]:
+                                s["last"] = dt
+                            
+                            if ' 403 ' in line or ' 401 ' in line:
+                                s["atk"] += 1
+                                
+        except Exception as e:
+            print(f"Error parse active ips: {e}")
+
+    # 3. Format Result
+    results = []
+    countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
+    
+    for ip, stats in ip_stats.items():
+        # Determine Status
+        r_status = "None"
+        if ip in rule_map:
+            r_status = "Blocked" if rule_map[ip] == "deny" else "Allowed"
+            
+        # Fake Country (deterministic by IP)
+        c_idx = sum(map(ord, ip)) % len(countries)
+        
+        results.append(ActiveIp(
+            ip=ip,
+            country=countries[c_idx],
+            request_count=stats["req"],
+            attack_count=stats["atk"],
+            last_seen=stats["last"].strftime("%H:%M:%S"),
+            rule_status=r_status
+        ))
+        
+    # Sort by activity (desc)
+    results.sort(key=lambda x: x.request_count, reverse=True)
+    return results[:50] # Top 50

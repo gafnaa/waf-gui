@@ -32,9 +32,26 @@ class StatsResponse(BaseModel):
     traffic_chart: List[TrafficPoint]
 
 class WafRuleRequest(BaseModel):
-    ip: IPvAnyAddress
+    ip: str # Changed from IPvAnyAddress to str to support CIDR
     action: str  # 'deny' or 'allow'
-    comment: Optional[str] = None
+    note: Optional[str] = None
+    duration: Optional[str] = "Permanent"
+
+class IpRule(BaseModel):
+    ip: str
+    action: str
+    note: str
+    duration: str
+    region: str = "Unknown" # Placeholder for GeoIP
+    status: str = "Active"
+
+class ActiveIp(BaseModel):
+    ip: str
+    country: str
+    request_count: int
+    attack_count: int
+    last_seen: str
+    rule_status: str # 'None', 'Blocked', 'Allowed'
 
 class CommandResponse(BaseModel):
     status: str
