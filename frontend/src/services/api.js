@@ -23,7 +23,9 @@ export const loginUser = (username, password) => {
 };
 
 export const getStats = (range = "live") => api.get(`/stats?range=${range}`);
-export const addWafRule = (ip, action) => api.post('/waf/rule', { ip, action });
+export const addWafRule = (ip, action, note = "", duration = "Permanent") => api.post('/waf/rule', { ip, action, note, duration });
+export const getIpRules = () => api.get('/waf/ip-rules');
+export const deleteIpRule = (ip) => api.delete(`/waf/rule?ip=${ip}`);
 export const getRules = () => api.get('/waf/rules');
 export const toggleRule = (rule_id, enable) => api.post('/waf/rules/toggle', { rule_id, enable });
 export const getCustomRules = () => api.get('/waf/custom');

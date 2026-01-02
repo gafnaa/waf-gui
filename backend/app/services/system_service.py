@@ -26,6 +26,10 @@ else:
 # File untuk custom rules
 CUSTOM_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "custom_rules.conf")
 
+import re
+
+IP_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "dummy_waf.conf")
+
 def restart_nginx():
     """Reload Nginx safely via sudo"""
     try:
@@ -35,9 +39,140 @@ def restart_nginx():
         # Fallback untuk mode development di Windows/Mac (agar tidak error 500)
         return {"status": "warning", "message": f"Simulated Reload (Dev Mode): {str(e)}"}
 
-def add_waf_rule(ip_address: str, action: str):
-    # Placeholder for older function if needed
-    pass 
+def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "Permanent"):
+    """
+    Adds an IP block/allow rule to Nginx config.
+    Format:
+    # Meta: note|duration
+    deny 192.168.1.1;
+    """
+    if action not in ["deny", "allow"]:
+        return {"status": "error", "message": "Action must be 'deny' or 'allow'"}
+    
+    # Basic validation (could use regex for stricter IP/CIDR)
+    if not ip_address:
+        return {"status": "error", "message": "IP Address is required"}
+
+    try:
+        entry = f"# Meta: {note}|{duration}\n{action} {ip_address};\n"
+        
+        with open(IP_RULES_FILE, "a") as f:
+            f.write(entry)
+            
+        restart_nginx()
+        return {"status": "success", "message": f"Rule added for {ip_address}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def get_ip_rules():
+    """Parses the IP rules file"""
+    rules = []
+    if not os.path.exists(IP_RULES_FILE):
+        return rules
+        
+    try:
+        with open(IP_RULES_FILE, "r") as f:
+            lines = f.readlines()
+            
+        current_meta = {"note": "-", "duration": "Permanent"}
+        
+        for line in lines:
+            line = line.strip()
+            if not line: 
+                continue
+                
+            if line.startswith("# Meta:"):
+                # Parse metadata
+                try:
+                    parts = line.split(":", 1)[1].strip().split("|")
+                    current_meta["note"] = parts[0] if len(parts) > 0 else "-"
+                    current_meta["duration"] = parts[1] if len(parts) > 1 else "Permanent"
+                except:
+                    pass
+            elif line.startswith("deny") or line.startswith("allow"):
+                # Parse Rule: deny 1.2.3.4;
+                try:
+                    parts = line.rstrip(";").split()
+                    action = parts[0]
+                    ip = parts[1]
+                    
+                    # Fake Region
+                    region = "US" if "1" in ip else ("CN" if "182" in ip else "Local")
+                    
+                    rules.append({
+                        "ip": ip,
+                        "action": action,
+                        "note": current_meta["note"],
+                        "duration": current_meta["duration"],
+                        "region": region,
+                        "status": "Active"
+                    })
+                    # Reset meta after consuming
+                    current_meta = {"note": "-", "duration": "Permanent"}
+                except:
+                    pass
+            else:
+                # Ordinary comment or other config, ignore or reset meta
+                # If it's not a Meta comment, we lose the context for the next rule usually.
+                # But let's assume strict format.
+                pass
+                
+    except Exception as e:
+        print(f"Error parsing rules: {e}")
+        
+    return rules
+
+def delete_ip_rule(ip_address: str):
+    """Removes a rule by IP"""
+    if not os.path.exists(IP_RULES_FILE):
+        return {"status": "error", "message": "Config file not found"}
+
+    try:
+        with open(IP_RULES_FILE, "r") as f:
+            lines = f.readlines()
+        
+        new_lines = []
+        skip_next = False
+        
+        # We need to filter out the Rule AND its preceding Meta comment.
+        # Simple approach: build a list of indices to remove
+        
+        # Better approach: Iterate and buffer.
+        # Since Meta is strictly above the rule, we can just filter blocks.
+        
+        parsed_entries = [] # Stores tuples (lines_list, ip_addr OR None)
+        
+        buffer = []
+        for line in lines:
+            buffer.append(line)
+            if line.strip().endswith(";"):
+                # Check IP
+                # Extraction
+                clean = line.strip().rstrip(";")
+                parts = clean.split()
+                if len(parts) >= 2:
+                    current_ip = parts[1]
+                    # If matches delete target, discard buffer
+                    if current_ip == ip_address:
+                        buffer = [] # Discard
+                    else:
+                        new_lines.extend(buffer)
+                        buffer = []
+                else:
+                    new_lines.extend(buffer)
+                    buffer = []
+        
+        # Add remaining (trailing newlines etc)
+        new_lines.extend(buffer)
+            
+        with open(IP_RULES_FILE, "w") as f:
+            f.writelines(new_lines)
+            
+        restart_nginx()
+        return {"status": "success", "message": f"Rule removed for {ip_address}"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)} 
 
 def get_waf_rules():
     """Mendapatkan status rule saat ini"""
