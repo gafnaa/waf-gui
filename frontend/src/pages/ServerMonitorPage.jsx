@@ -44,12 +44,26 @@ const ServerMonitorPage = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const [isVisible, setIsVisible] = useState(false);
+
     useEffect(() => {
         if (notification) {
-            const timer = setTimeout(() => setNotification(null), 3000);
+            setIsVisible(true);
+            const timer = setTimeout(() => {
+                setIsVisible(false);
+            }, 3000);
             return () => clearTimeout(timer);
         }
     }, [notification]);
+
+    useEffect(() => {
+        if (!isVisible && notification) {
+            const timer = setTimeout(() => {
+                setNotification(null);
+            }, 300); // Wait for exit animation
+            return () => clearTimeout(timer);
+        }
+    }, [isVisible, notification]);
 
     const fetchStatus = async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -123,21 +137,43 @@ const ServerMonitorPage = () => {
     };
 
 
+    const handleManualRefresh = async () => {
+        setNotification({ type: 'info', message: 'Refreshing data...' });
+        await fetchStatus();
+        setNotification({ type: 'success', message: 'System data refreshed' });
+    };
+
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
 
     return (
         <div className="space-y-6 relative">
              {/* Notification Toast */}
+            {/* Notification Toast */}
             {notification && (
-                <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-xl border flex items-center gap-3 animate-in slide-in-from-right-10 duration-300 ${
-                    notification.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' :
-                    notification.type === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' :
-                    'bg-blue-950/90 border-blue-500/50 text-blue-200'
+                <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-xl border flex items-center gap-3 transition-all duration-300 ${
+                    isVisible 
+                        ? 'animate-in fade-in slide-in-from-top-5 opacity-100 translate-y-0' 
+                        : 'animate-out fade-out slide-out-to-right-10 opacity-0 translate-x-10'
+                } ${
+                    notification.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200 shadow-emerald-900/20' :
+                    notification.type === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200 shadow-rose-900/20' :
+                    'bg-blue-950/90 border-blue-500/50 text-blue-200 shadow-blue-900/20'
                 }`}>
                     {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-500" />}
                     {notification.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-500" />}
                     {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
-                    <span className="text-sm font-medium">{notification.message}</span>
+                    
+                    <div className="flex flex-col">
+                         <span className="text-sm font-medium">{notification.message}</span>
+                         {/* Optional progress bar for auto-dismiss could go here */}
+                    </div>
+
+                    <button 
+                        onClick={() => setIsVisible(false)}
+                        className="ml-2 p-1 hover:bg-white/10 rounded-full transition-colors"
+                    >
+                        <X className="w-4 h-4 opacity-70" />
+                    </button>
                 </div>
             )}
 
@@ -230,8 +266,8 @@ const ServerMonitorPage = () => {
                         System Online
                     </span>
                     <button 
-                        onClick={() => fetchStatus(true)}
-                        className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700 hover:bg-slate-700 transition-colors"
+                        onClick={handleManualRefresh}
+                        className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700 hover:bg-slate-700 transition-colors cursor-pointer"
                         title="Refresh Data"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

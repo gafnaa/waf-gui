@@ -42,16 +42,7 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Node Status Widget */}
-      <div className="px-4 py-6">
-        <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
-            <div className="flex justify-between items-start mb-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Node Status</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-            </div>
-            <div className="font-mono text-xs text-slate-300">us-east-1a • v4.2.0</div>
-        </div>
-      </div>
+
 
       {/* Navigation Menu */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2 no-scrollbar">
