@@ -93,11 +93,7 @@ const ServerMonitorPage = () => {
         }
     };
 
-    const handleViewLogs = () => {
-        setNotification({ type: 'info', message: 'Fetching access logs...' });
-        // Future: Navigate to logs page
-        // navigate('/logs');
-    };
+
 
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
 
@@ -332,15 +328,7 @@ const ServerMonitorPage = () => {
                         </div>
                     </div>
 
-                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group" onClick={handleViewLogs}>
-                        <div className="p-3 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
-                            <FileText className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-200 text-sm">View Access Logs</h4>
-                            <p className="text-xs text-slate-500">Raw http requests</p>
-                        </div>
-                    </div>
+
 
                      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-rose-500/50 transition-colors cursor-pointer group" onClick={handleRestart}>
                         <div className="p-3 bg-rose-500/10 rounded-lg group-hover:bg-rose-500/20 transition-colors">
@@ -394,7 +382,7 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
                             )}
                         </div>
                          {description && (
-                            <p className="text-[10px] text-slate-400 mt-3">{description}</p>
+                            <p className="text-[12px] text-slate-400 mt-2">{description}</p>
                         )}
                     </div>
                     <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors shrink-0`}>
