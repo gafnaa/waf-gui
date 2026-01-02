@@ -74,3 +74,19 @@ class WafRuleStatus(BaseModel):
     desc: str
     enabled: bool
     category: str
+
+class ServiceStatus(BaseModel):
+    name: str
+    status: str # 'Active', 'Inactive', 'Sleeping'
+    pid: int
+    cpu: str
+    uptime: str
+
+class SystemHealth(BaseModel):
+    uptime: str
+    ram_usage: dict # {"used": 8.4, "total": 16, "percent": 52.5}
+    cpu_usage: int
+    disk_usage: dict # {"used_percent": 85, "path": "/var/log"}
+    load_avg: float
+    network: dict # {"in": 120, "out": 50}
+    services: List[ServiceStatus]

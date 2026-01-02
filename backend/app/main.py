@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -72,9 +72,21 @@ def restart_server(user = Depends(auth_service.get_current_user)):
 def get_custom_rules(user = Depends(auth_service.get_current_user)):
     return system_service.get_custom_rules()
 
+@app.get("/api/system/status", response_model=SystemHealth)
+def get_system_status(user = Depends(auth_service.get_current_user)):
+    return system_service.get_system_health()
+
 @app.post("/api/waf/custom", response_model=CommandResponse)
 def save_custom_rules(req: CustomRuleRequest, user = Depends(auth_service.get_current_user)):
     return system_service.save_custom_rules(req.content)
+
+@app.post("/api/system/clear-cache", response_model=CommandResponse)
+def clear_cache(user = Depends(auth_service.get_current_user)):
+    return system_service.clear_cache()
+
+@app.post("/api/system/services/{service_name}/{action}", response_model=CommandResponse)
+def manage_service_endpoint(service_name: str, action: str, user = Depends(auth_service.get_current_user)):
+    return system_service.manage_service(service_name, action)
 
 if __name__ == "__main__":
     import uvicorn

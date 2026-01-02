@@ -32,5 +32,8 @@ export const toggleRule = (rule_id, enable) => api.post('/waf/rules/toggle', { r
 export const getCustomRules = () => api.get('/waf/custom');
 export const saveCustomRules = (content) => api.post('/waf/custom', { content });
 export const restartNginx = () => api.post('/system/restart');
+export const getSystemStatus = () => api.get('/system/status');
+export const clearWafCache = () => api.post('/system/clear-cache');
+export const manageService = (serviceName, action) => api.post(`/system/services/${serviceName}/${action}`);
 
 export default api;

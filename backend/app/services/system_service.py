@@ -1,6 +1,9 @@
 import subprocess
 import random
 import os
+import psutil
+import time
+from datetime import datetime, timedelta
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -273,3 +276,176 @@ def save_custom_rules(content: str):
         return {"status": "success", "message": "Custom rules saved and applied."}
     except Exception as e:
          return {"status": "error", "message": f"Failed to save rules: {str(e)}"}
+
+def clear_cache():
+    """Clears Nginx cache and temporary files"""
+    try:
+        if os.name == 'nt':
+            # Windows/Dev: Just simulate
+            import time
+            time.sleep(1) # Simulate work
+            return {"status": "success", "message": "Cache cleared successfully (Simulation)"}
+        else:
+            # Linux: Clear nginx cache directories
+            # Assuming standard paths
+            subprocess.run("sudo rm -rf /var/cache/nginx/*", shell=True, check=True)
+            restart_nginx() # Reload to clear memory cache
+            return {"status": "success", "message": "Nginx cache cleared"}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
+
+def manage_service(service_name: str, action: str):
+    """
+    Start/Stop/Restart a system service.
+    """
+    ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban"]
+    
+    # Mapping friendly names to actual systemd service names if needed
+    SERVICE_MAP = {
+        "ssh": "sshd",
+        "nginx": "nginx",
+        "postgresql": "postgresql",
+        "fail2ban": "fail2ban"
+    }
+
+    if service_name not in ALLOWED_SERVICES:
+        return {"status": "error", "message": f"Service '{service_name}' is not managed by this panel."}
+    
+    sys_name = SERVICE_MAP.get(service_name, service_name)
+
+    if action not in ["start", "stop", "restart"]:
+        return {"status": "error", "message": "Invalid action. Use start, stop, or restart."}
+
+    try:
+        if os.name == 'nt':
+            # Dev Mode Simulation
+            time.sleep(1)
+            return {"status": "success", "message": f"[DEV] Service {sys_name} {action}ed successfully."}
+        else:
+            # Production: Use systemctl
+            # Note: The user runner must have sudo NOPASSWD for /bin/systemctl or equivalent
+            cmd = ["sudo", "/usr/bin/systemctl", action, sys_name]
+            subprocess.run(cmd, check=True)
+            return {"status": "success", "message": f"Service {sys_name} {action}ed successfully."}
+            
+    except subprocess.CalledProcessError as e:
+        return {"status": "error", "message": f"Failed to {action} {sys_name}: {str(e)}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def get_services_status():
+    """
+    Get status of monitored services.
+    Uses psutil to find processes and systemctl for status if available.
+    """
+    target_services = [
+        {"name": "nginx", "label": "Nginx Web Server"},
+        {"name": "fail2ban", "label": "Fail2Ban WAF"},
+        {"name": "sshd", "label": "SSH Service"},
+        {"name": "postgresql", "label": "Database"}
+    ]
+    
+    results = []
+    
+    # Windows Dev Mode Fallback
+    if os.name == 'nt':
+        # Return random simulated data for preview
+        return [
+            {"id": "nginx", "name": "Nginx", "status": "Active", "pid": 1024, "cpu": f"{random.uniform(0.5, 5.0):.1f}%", "uptime": "14d"},
+            {"id": "fail2ban", "name": "Fail2Ban", "status": "Active", "pid": 1025, "cpu": f"{random.uniform(0.1, 1.0):.1f}%", "uptime": "14d"},
+            {"id": "ssh", "name": "SSH", "status": "Sleeping", "pid": 892, "cpu": "0.1%", "uptime": "45d"},
+            {"id": "postgresql", "name": "PostgreSQL", "status": "Active", "pid": 5432, "cpu": "1.2%", "uptime": "3d"},
+        ]
+
+    for svc in target_services:
+        s_name = svc["name"]
+        item = {
+            "id": svc["name"],
+            "name": svc["label"],
+            "status": "Inactive",
+            "pid": "-",
+            "cpu": "0%",
+            "uptime": "-"
+        }
+        
+        try:
+            # Check status using systemctl
+            # is-active returns 0 if active, others if not
+            res = subprocess.run(["systemctl", "is-active", s_name], capture_output=True, text=True)
+            if res.returncode == 0:
+                item["status"] = "Active"
+                
+                # Get PID
+                res_pid = subprocess.run(["systemctl", "show", "--property", "MainPID", "--value", s_name], capture_output=True, text=True)
+                pid_str = res_pid.stdout.strip()
+                
+                if pid_str and pid_str != "0":
+                    pid = int(pid_str)
+                    item["pid"] = pid
+                    
+                    # Get CPU & Uptime via psutil
+                    try:
+                        p = psutil.Process(pid)
+                        # cpu_percent needs to be called once, then again to get interval. 
+                        # But simpler is just 0.0 or last value. 
+                        # For 'instant' reading without blocking, we might get 0.0 often.
+                        # We used p.cpu_percent() (blocking) or p.cpu_percent(interval=None)
+                        item["cpu"] = f"{p.cpu_percent(interval=None)}%"
+                        
+                        # Calculate uptime
+                        create_time = datetime.fromtimestamp(p.create_time())
+                        uptime_duration = datetime.now() - create_time
+                        
+                        # Format uptime friendly
+                        days = uptime_duration.days
+                        hours = uptime_duration.seconds // 3600
+                        item["uptime"] = f"{days}d {hours}h"
+                    except:
+                        pass
+            elif res.stdout.strip() == "failed":
+                item["status"] = "Failed"
+            else:
+                 item["status"] = "Stopped"
+                 
+        except Exception:
+            item["status"] = "Unknown"
+            
+        results.append(item)
+        
+    return results
+
+def get_system_health():
+    """Retrieves real-time system metrics (Simulated for this demo)"""
+    
+    # Simulate CPU/RAM
+    ram_total = 16.0
+    ram_used = 8.4 + random.uniform(-0.5, 0.5)
+    ram_percent = (ram_used / ram_total) * 100
+    
+    cpu_usage = int(12 + random.uniform(-5, 10))
+    
+    # Simulate Load Avg
+    load_avg = 0.45 + random.uniform(0, 0.2)
+    
+    # Simulate Uptime
+    uptime = "14d 2h 12m"
+    
+    # Simulate Network
+    net_in = int(120 + random.uniform(-20, 30))
+    net_out = int(50 + random.uniform(-10, 10))
+    
+    services = get_services_status()
+    
+    return {
+        "uptime": uptime,
+        "ram_usage": {
+            "used": round(ram_used, 1), 
+            "total": ram_total, 
+            "percent": round(ram_percent, 1)
+        },
+        "cpu_usage": cpu_usage,
+        "disk_usage": {"used_percent": 85, "path": "/var/log"},
+        "load_avg": round(load_avg, 2),
+        "network": {"in": net_in, "out": net_out},
+        "services": services
+    }

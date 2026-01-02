@@ -5,6 +5,7 @@ import RulesPage from './pages/RulesPage';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import AccessControlPage from './pages/AccessControlPage';
+import ServerMonitorPage from './pages/ServerMonitorPage';
 
 // Placeholder Components for missing pages
 const PlaceholderPage = ({ title }) => (
@@ -66,7 +67,7 @@ function App() {
                     <Route path="overview" element={<OverviewPage />} />
                     <Route path="rules" element={<RulesPage />} />
                     <Route path="access-control" element={<AccessControlPage />} />
-                    <Route path="server-monitor" element={<PlaceholderPage title="Server Monitor" />} />
+                    <Route path="server-monitor" element={<ServerMonitorPage />} />
                     <Route path="logs" element={<PlaceholderPage title="System Logs" />} />
                     <Route path="settings" element={<PlaceholderPage title="System Configuration" />} />
                 </Route>
