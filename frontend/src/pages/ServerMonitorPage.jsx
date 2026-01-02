@@ -163,24 +163,20 @@ const ServerMonitorPage = () => {
                 />
 
                 {/* Load Avg */}
-                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group">
-                     <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Load Average</p>
-                            <h3 className="text-2xl font-bold text-white mt-1">{status.load_avg}</h3>
-                        </div>
-                        <div className="p-2 bg-purple-500/10 rounded-lg">
-                            <Activity className="w-5 h-5 text-purple-500" />
-                        </div>
-                    </div>
-                    <p className="text-xs text-slate-500">15m avg • Optimal range</p>
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-800">
-                        <div className="h-full bg-purple-500" style={{ width: `${(status.load_avg / 4) * 100}%` }}></div>
-                    </div>
-                </div>
+                <MetricCard 
+                    title="Load Average" 
+                    value={status.load_avg} 
+                    subValue="15m Avg"
+                    description="Optimal performance range"
+                    subColor="purple"
+                    icon={Activity}
+                    color="purple"
+                    progress={Math.min((status.load_avg / 4) * 100, 100)}
+                    progressLabel="System Load"
+                />
 
                 {/* Uptime */}
-                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group">
+                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full">
                      <div className="flex justify-between items-start mb-4">
                         <div>
                             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Uptime</p>
@@ -190,7 +186,9 @@ const ServerMonitorPage = () => {
                             <Clock className="w-5 h-5 text-emerald-500" />
                         </div>
                     </div>
-                    <p className="text-xs text-slate-500">Since last patch cycle</p>
+                    <div className="mt-auto">
+                        <p className="text-xs text-slate-500">Since last patch cycle</p>
+                    </div>
                 </div>
             </div>
 
@@ -366,7 +364,7 @@ const CheckCircleIcon = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
 );
 
-const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subColor="emerald" }) => {
+const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subColor="emerald", progressLabel="Usage", description }) => {
     const colorClasses = {
         blue: "text-blue-500 bg-blue-500",
         amber: "text-amber-500 bg-amber-500",
@@ -382,30 +380,35 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
     };
 
     return (
-        <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group">
-            <div className="flex justify-between items-start mb-4">
-                <div className="min-w-0 flex-1 mr-2">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">{title}</p>
-                    <div className="flex flex-wrap items-baseline gap-2 mt-1">
-                        <h3 className="text-xl lg:text-2xl font-bold text-white leading-none whitespace-nowrap">{value}</h3>
-                        {subValue && (
-                            <span className={`text-[10px] font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} px-1.5 py-0.5 rounded uppercase tracking-wider`}>
-                                {subValue}
-                            </span>
+        <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full">
+            <div className="flex-1"> {/* Flex-1 to push progress bar down */}
+                <div className="flex justify-between items-start mb-2"> {/* margin-bottom reduced slightly */}
+                    <div className="min-w-0 flex-1 mr-2">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">{title}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <h3 className="text-xl lg:text-2xl font-bold text-white leading-none whitespace-nowrap">{value}</h3>
+                            {subValue && (
+                                <span className={`text-[10px] font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} px-1.5 py-0.5 rounded uppercase tracking-wider`}>
+                                    {subValue}
+                                </span>
+                            )}
+                        </div>
+                         {description && (
+                            <p className="text-[10px] text-slate-400 mt-3">{description}</p>
                         )}
                     </div>
-                </div>
-                <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors shrink-0`}>
-                    <Icon className={`w-5 h-5 ${textColors[color]}`} />
+                    <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors shrink-0`}>
+                        <Icon className={`w-5 h-5 ${textColors[color]}`} />
+                    </div>
                 </div>
             </div>
             
             {/* Progress Bar */}
             {progress !== undefined && (
-                <div className="mt-2">
+                <div className="mt-auto">
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                        <span>Usage</span>
-                        <span>{progress}%</span>
+                        <span>{progressLabel}</span>
+                        <span>{Math.round(progress)}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div 
