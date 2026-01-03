@@ -125,9 +125,10 @@ const LogsPage = () => {
                         onChange={setTimeRange}
                         minWidth="min-w-[100px]"
                         options={[
-                            { value: "Last 24h", label: "Last 24h" },
                             { value: "Last Hour", label: "Last Hour" },
-                            { value: "7 Days", label: "7 Days" }
+                            { value: "Last 24h", label: "Last 24h" },
+                            { value: "Last 3d", label: "Last 3d" },
+                            { value: "Last 7d", label: "Last 7d" }
                         ]}
                     />
 
@@ -140,9 +141,13 @@ const LogsPage = () => {
                         options={[
                             { value: "All", label: "Type: All" },
                             { value: "Attacks Only", label: "Attacks Only" },
+                            { value: "Safe Traffic", label: "Safe Traffic" },
                             { value: "SQL Injection", label: "SQL Injection" },
                             { value: "XSS", label: "XSS" },
-                            { value: "Scanner", label: "Scanner" }
+                            { value: "Scanner", label: "Scanner" },
+                            { value: "Brute Force", label: "Brute Force" },
+                            { value: "RCE", label: "RCE" },
+                            { value: "LFI", label: "LFI" }
                         ]}
                     />
 
@@ -154,9 +159,11 @@ const LogsPage = () => {
                         minWidth="min-w-[110px]"
                         options={[
                             { value: "All", label: "Status: All" },
-                            { value: "403", label: "Blocked (403)" },
-                            { value: "200", label: "Allowed (200)" },
-                            { value: "500", label: "Error (500)" }
+                            { value: "200", label: "OK (200)" },
+                            { value: "403", label: "Forbidden (403)" },
+                            { value: "401", label: "Unauth (401)" },
+                            { value: "404", label: "Not Found (404)" },
+                            { value: "500", label: "Server Error (500)" }
                         ]}
                     />
 

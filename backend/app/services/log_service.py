@@ -242,13 +242,16 @@ def get_attack_type(line: str, status_code: int) -> str:
     if "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
         return "XSS"
     if "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
-        return "Path Traversal"
+        return "LFI"
     if "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
         return "RCE"
     if "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
         return "Scanner"
     if "head /" in line_lower: # Simple heuristic
         return "Scanner"
+    if "login" in line_lower or "admin" in line_lower:
+        # Heuristic for BF if status is 4xx, but let's label it interesting anyway
+        return "Brute Force"
     
     if status_code >= 400 and status_code < 500:
          return "Suspicious"
@@ -276,6 +279,12 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
         cutoff_time = now - datetime.timedelta(hours=1)
     elif time_range == "Last 24h":
         cutoff_time = now - datetime.timedelta(hours=24)
+    elif time_range == "Last 3d":
+        cutoff_time = now - datetime.timedelta(days=3)
+    elif time_range == "Last 7d":
+        # Note: frontend sends "Last 7d" but initially it was "7 Days". 
+        # We handle both just in case.
+        cutoff_time = now - datetime.timedelta(days=7)
     elif time_range == "7 Days":
         cutoff_time = now - datetime.timedelta(days=7)
     
@@ -357,14 +366,16 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
                                 continue
 
                         if status and status != "All":
-                            if status == "403" and entry.status_code != 403: continue
-                            if status == "200" and entry.status_code != 200: continue
-                            if status == "500" and entry.status_code != 500: continue
-                        
-                        if attack_type and attack_type != "All":
-                            if attack_type == "Attacks Only" and entry.attack_type == "Safe":
+                            # Generic check -> if status filter is a number, match it exactly
+                            if status.isdigit() and entry.status_code != int(status):
                                 continue
-                            if attack_type != "Attacks Only" and entry.attack_type != attack_type:
+
+                        if attack_type and attack_type != "All":
+                            if attack_type == "Attacks Only":
+                                if entry.attack_type == "Safe": continue
+                            elif attack_type == "Safe Traffic" or attack_type == "Allowed Only":
+                                if entry.attack_type != "Safe": continue
+                            elif entry.attack_type != attack_type:
                                  continue
                         
                         logs.append(entry)
