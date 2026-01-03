@@ -26,12 +26,29 @@ const LogsPage = () => {
     const [activeFilter, setActiveFilter] = useState("All"); // Attack Type
     const [statusFilter, setStatusFilter] = useState("All");
 
+    // Live Tail
+    const [isLiveTail, setIsLiveTail] = useState(false);
+
+    // Live Tail effect
     useEffect(() => {
-        fetchLogs();
+        let interval;
+        if (isLiveTail) {
+            // Initial fetch
+            fetchLogs(true); 
+            // Poll
+            interval = setInterval(() => {
+                fetchLogs(true);
+            }, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [isLiveTail, page, search, activeFilter, statusFilter, timeRange]);
+
+    useEffect(() => {
+        if (!isLiveTail) fetchLogs();
     }, [page, search, activeFilter, statusFilter, timeRange]);
 
-    const fetchLogs = async () => {
-        setLoading(true);
+    const fetchLogs = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const res = await getLogs({ 
                 page, 
@@ -48,7 +65,7 @@ const LogsPage = () => {
         } catch (err) {
             console.error("Failed to fetch logs", err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -93,9 +110,16 @@ const LogsPage = () => {
                         <Download className="w-4 h-4" />
                         Export CSV
                     </button>
-                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-900/40 transition-all">
-                        <Activity className="w-4 h-4" />
-                        Live Tail
+                    <button 
+                        onClick={() => setIsLiveTail(!isLiveTail)}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all ${
+                            isLiveTail 
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/40 ring-2 ring-emerald-500/20' 
+                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/40'
+                        }`}
+                    >
+                        <Activity className={`w-4 h-4 ${isLiveTail ? 'animate-pulse' : ''}`} />
+                        {isLiveTail ? 'Live Tail: ON' : 'Live Tail'}
                     </button>
                 </div>
             </div>
