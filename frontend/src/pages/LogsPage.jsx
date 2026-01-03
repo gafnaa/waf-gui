@@ -198,10 +198,7 @@ const LogsPage = () => {
                                             <div className="h-4 bg-slate-800/50 rounded w-24"></div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-4 bg-slate-800/50 rounded w-32"></div>
-                                                <div className="h-4 bg-slate-800/50 rounded w-8"></div>
-                                            </div>
+                                            <div className="h-4 bg-slate-800/50 rounded w-32"></div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="h-4 bg-slate-800/50 rounded w-16"></div>
@@ -233,10 +230,7 @@ const LogsPage = () => {
                                             {log.timestamp}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-slate-200 font-medium">{log.source_ip}</span>
-                                                <span className="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded">{log.country}</span>
-                                            </div>
+                                            <span className="text-slate-200 font-medium">{log.source_ip}</span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`font-bold text-xs ${
