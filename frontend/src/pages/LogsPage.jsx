@@ -28,7 +28,7 @@ const LogsPage = () => {
 
     useEffect(() => {
         fetchLogs();
-    }, [page, search, activeFilter, statusFilter]);
+    }, [page, search, activeFilter, statusFilter, timeRange]);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -38,7 +38,8 @@ const LogsPage = () => {
                 limit: 10, 
                 search: search || undefined,
                 status: statusFilter,
-                attack_type: activeFilter
+                attack_type: activeFilter,
+                time_range: timeRange
             });
             const data = res.data;
             setLogs(data.data);

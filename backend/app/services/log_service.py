@@ -7,7 +7,7 @@ import random
 import math
 from collections import deque, defaultdict
 from app.core.config import get_settings
-from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
+from app.models.schemas import StatsResponse, AttackModule, TrafficPoint, WafLogEntry, WafLogListResponse
 from app.services import system_service
 
 settings = get_settings()
@@ -255,13 +255,36 @@ def get_attack_type(line: str, status_code: int) -> str:
          
     return "Safe"
 
-def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str = None, attack_type: str = None):
-    from app.models.schemas import WafLogEntry, WafLogListResponse
-    
+def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str = None, attack_type: str = None, time_range: str = "Last 24h"):
+
     logs = []
     
-    args = [search, status, attack_type]
-    is_default_filter = all(a is None or a == "All" for a in args)
+    args = [search, status, attack_type, time_range]
+    # Default if no specific filters (Time range defaults to Last 24h, so if it is default, we can consider it "default" ONLY if we assume log file is small or recent. But for big logs, 24h is a filter).
+    # Actually, if time_range is "Last 24h" (default), we usually want to verify. 
+    # Let's consider "default filter" only if NO filters are touched.
+    # However, user asks to fix "filter table".
+    # For optimization: If (search is None) AND (status is All) AND (attack_type is All) AND (time_range is All/Lifetime or just ignored), we do direct slice.
+    # But current default `time_range` is "Last 24h". 
+    # Let's handle "Last 24h" as a filter.
+    
+    # Calculate cutoff time
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff_time = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+    
+    if time_range == "Last Hour":
+        cutoff_time = now - datetime.timedelta(hours=1)
+    elif time_range == "Last 24h":
+        cutoff_time = now - datetime.timedelta(hours=24)
+    elif time_range == "7 Days":
+        cutoff_time = now - datetime.timedelta(days=7)
+    
+    # Check if we can use optimized path
+    # We can ONLY use optimized path if we are NOT filtering by anything AND time_range covers 'everything' (e.g. log file is newer than cutoff).
+    # Safest is to use fallback scan if ANY filter is active.
+    # We will assume "Last 24h" is a filter that requires scanning unless we are sure.
+    # For this implementation, let's treat any time_range other than "All" (if we had it) as a filter.
+    is_strict_default = (search is None or search == "") and (status is None or status == "All") and (attack_type is None or attack_type == "All") and (time_range == "All Time")  
 
     if os.path.exists(settings.ACCESS_LOG_PATH):
         try:
@@ -270,7 +293,7 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
                 total = len(lines)
                 
                 # Optimized Path for Default Filters (Direct Slicing)
-                if is_default_filter:
+                if is_strict_default:
                     # Reverse Index Logic
                     # Newest is at index len-1. 
                     # Page 1 (0-10) -> indices [len-1, len-2 ... len-10]
@@ -314,6 +337,20 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
                         if not entry: continue
 
                         # Filtering
+                        # Filtering
+                        # Time Filter
+                        try:
+                            # entry.timestamp is "27/Oct/2023:14:02:11"
+                            # Parse it
+                            dt_entry = datetime.datetime.strptime(entry.timestamp, "%d/%b/%Y:%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+                            if dt_entry < cutoff_time:
+                                # Optimization: Since we read reversed (newest first), 
+                                # if current log is older than cutoff, all subsequent logs are also older.
+                                break
+                        except:
+                            # If parsing fails, maybe include or exclude?
+                            pass
+
                         if search:
                             s = search.lower()
                             if s not in entry.source_ip.lower() and s not in entry.path.lower() and s not in entry.attack_type.lower():
@@ -352,7 +389,6 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
     )
 
 def parse_single_line_safely(line, index, total_lines):
-    from app.models.schemas import WafLogEntry
     try:
         parts = line.split(' [')
         if len(parts) < 2: return None

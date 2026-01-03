@@ -67,9 +67,10 @@ def get_waf_logs(
     search: str = None, 
     status: str = "All", 
     attack_type: str = "All",
+    time_range: str = "Last 24h",
     user = Depends(auth_service.get_current_user)
 ):
-    return log_service.get_waf_logs(page, limit, search, status, attack_type)
+    return log_service.get_waf_logs(page, limit, search, status, attack_type, time_range)
 
 @app.delete("/api/waf/rule", response_model=CommandResponse)
 def delete_rule(ip: str, user = Depends(auth_service.get_current_user)):
