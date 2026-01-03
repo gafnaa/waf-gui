@@ -183,21 +183,44 @@ const LogsPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/30">
-                            {loading && logs.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
-                                        Loading logs...
-                                    </td>
-                                </tr>
+                            {loading ? (
+                                [...Array(10)].map((_, idx) => (
+                                    <tr key={idx} className="animate-pulse">
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-slate-800/50 rounded w-24"></div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-4 bg-slate-800/50 rounded w-32"></div>
+                                                <div className="h-4 bg-slate-800/50 rounded w-8"></div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-slate-800/50 rounded w-16"></div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-4 bg-slate-800/50 rounded w-48"></div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="h-6 bg-slate-800/50 rounded-full w-24"></div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="h-4 bg-slate-800/50 rounded w-8 ml-auto"></div>
+                                        </td>
+                                    </tr>
+                                ))
                             ) : logs.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
-                                        No logs found matching your criteria.
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Filter className="w-8 h-8 opacity-20" />
+                                            <span>No logs found matching your criteria.</span>
+                                        </div>
                                     </td>
                                 </tr>
                             ) : (
                                 logs.map((log, i) => (
-                                    <tr key={log.id || i} className="hover:bg-slate-800/30 transition-colors group">
+                                    <tr key={log.id || i} className="hover:bg-slate-800/30 transition-colors group animate-in fade-in duration-500">
                                         <td className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">
                                             {log.timestamp}
                                         </td>

@@ -260,82 +260,84 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
     
     logs = []
     
+    args = [search, status, attack_type]
+    is_default_filter = all(a is None or a == "All" for a in args)
+
     if os.path.exists(settings.ACCESS_LOG_PATH):
         try:
             with open(settings.ACCESS_LOG_PATH, "r") as f:
-                # Read all lines (inefficient for gb logs, but fine here)
                 lines = f.readlines()
+                total = len(lines)
                 
+                # Optimized Path for Default Filters (Direct Slicing)
+                if is_default_filter:
+                    # Reverse Index Logic
+                    # Newest is at index len-1. 
+                    # Page 1 (0-10) -> indices [len-1, len-2 ... len-10]
+                    start_idx = (page - 1) * limit
+                    end_idx = start_idx + limit
+                    
+                    # Ensure boundaries
+                    # If total=100, page=1, start=0, end=10.
+                    # We want lines from (total-1-0) down to (total-1-9)
+                    
+                    logs_data = []
+                    count = 0
+                    # Iterate backwards from end of file
+                    for i in range(len(lines) - 1, -1, -1):
+                        if count >= end_idx:
+                            break
+                        
+                        if count >= start_idx:
+                            line = lines[i]
+                            # Parse SINGLE line
+                            parsed = parse_single_line_safely(line, i, len(lines))
+                            if parsed:
+                                logs.append(parsed)
+                                
+                        count += 1
+                        
+                    return WafLogListResponse(
+                        data=logs,
+                        total=total,
+                        page=page,
+                        limit=limit,
+                        total_pages=math.ceil(total / limit)
+                    )
+
+                # Fallback: Full Scan for Filtered Results (Existing Logic)
                 # Parse in reverse to show newest first
                 for i, line in enumerate(reversed(lines)):
-                    # Parsing Logic
-                    # Example: 192.168.1.45 - - [27/Oct/2023:14:02:11 +0000] "POST /admin/login.php HTTP/1.1" 403 ...
+                    # existing parsing logic...
                     try:
-                        parts = line.split(' [')
-                        if len(parts) < 2: continue
-                        
-                        ip_part = line.split(' - -')[0].strip()
-                        time_part = parts[1].split(']')[0]
-                        
-                        # Request line
-                        rest = parts[1].split(']')[1]
-                        req_parts = rest.split('"')
-                        if len(req_parts) < 2: continue
-                        
-                        request_line = req_parts[1] # POST /admin/login.php HTTP/1.1
-                        req_tokens = request_line.split()
-                        method = req_tokens[0] if len(req_tokens) > 0 else "-"
-                        path = req_tokens[1] if len(req_tokens) > 1 else "-"
-                        
-                        # Status Code
-                        status_part = rest.split('"')[2].strip().split()[0]
-                        status_code = int(status_part) if status_part.isdigit() else 0
-                        
-                        # Determine Attack Type
-                        # If status 200/302 usually safe unless it's a false negative, but for UI we assume status code hints too?
-                        # Actually we should inspect signatures.
-                        current_type = get_attack_type(line, status_code)
-                        if status_code == 200 and current_type == "Suspicious":
-                            current_type = "Safe" # Correction
-                        
+                        entry = parse_single_line_safely(line, i, len(lines))
+                        if not entry: continue
+
                         # Filtering
                         if search:
                             s = search.lower()
-                            if s not in ip_part.lower() and s not in path.lower() and s not in current_type.lower():
+                            if s not in entry.source_ip.lower() and s not in entry.path.lower() and s not in entry.attack_type.lower():
                                 continue
-                                
+
                         if status and status != "All":
-                             # Expecting '2xx', '4xx', '5xx' or specific
-                             pass # Implement if needed
+                            if status == "403" and entry.status_code != 403: continue
+                            if status == "200" and entry.status_code != 200: continue
+                            if status == "500" and entry.status_code != 500: continue
                         
                         if attack_type and attack_type != "All":
-                            if attack_type == "Attacks Only" and current_type == "Safe":
+                            if attack_type == "Attacks Only" and entry.attack_type == "Safe":
                                 continue
-                            if attack_type != "Attacks Only" and current_type != attack_type:
-                                # Loose match for logic
-                                pass
+                            if attack_type != "Attacks Only" and entry.attack_type != attack_type:
+                                 continue
                         
-                        # Fake Country
-                        countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
-                        c_idx = sum(map(ord, ip_part)) % len(countries)
-                        
-                        logs.append(WafLogEntry(
-                            id=i,
-                            timestamp=time_part,
-                            source_ip=ip_part,
-                            method=method,
-                            path=path,
-                            attack_type=current_type,
-                            status_code=status_code,
-                            country=countries[c_idx]
-                        ))
+                        logs.append(entry)
                     except Exception:
                         continue
                         
         except Exception as e:
             print(f"Error parse logs: {e}")
-            
-    # Pagination
+
+    # Pagination for Filtered Results
     total = len(logs)
     start = (page - 1) * limit
     end = start + limit
@@ -348,3 +350,47 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
         limit=limit,
         total_pages=math.ceil(total / limit)
     )
+
+def parse_single_line_safely(line, index, total_lines):
+    from app.models.schemas import WafLogEntry
+    try:
+        parts = line.split(' [')
+        if len(parts) < 2: return None
+        
+        ip_part = line.split(' - -')[0].strip()
+        time_part = parts[1].split(']')[0]
+        
+        rest = parts[1].split(']')[1]
+        req_parts = rest.split('"')
+        if len(req_parts) < 2: return None
+        
+        request_line = req_parts[1]
+        req_tokens = request_line.split()
+        method = req_tokens[0] if len(req_tokens) > 0 else "-"
+        path = req_tokens[1] if len(req_tokens) > 1 else "-"
+        
+        if len(rest.split('"')) > 2:
+             status_part = rest.split('"')[2].strip().split()[0]
+             status_code = int(status_part) if status_part.isdigit() else 0
+        else:
+             status_code = 0
+        
+        current_type = get_attack_type(line, status_code)
+        if status_code == 200 and current_type == "Suspicious":
+            current_type = "Safe"
+            
+        countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
+        c_idx = sum(map(ord, ip_part)) % len(countries)
+
+        return WafLogEntry(
+            id=total_lines - index, # ID based on line number (approx)
+            timestamp=time_part,
+            source_ip=ip_part,
+            method=method,
+            path=path,
+            attack_type=current_type,
+            status_code=status_code,
+            country=countries[c_idx]
+        )
+    except:
+        return None
