@@ -4,9 +4,10 @@ import psutil
 import datetime
 import re
 import random
+import math
 from collections import deque, defaultdict
 from app.core.config import get_settings
-from app.models.schemas import StatsResponse, AttackModule, TrafficPoint
+from app.models.schemas import StatsResponse, AttackModule, TrafficPoint, WafLogEntry, WafLogListResponse
 from app.services import system_service
 
 settings = get_settings()
@@ -231,3 +232,213 @@ def get_active_ips(window_minutes: int = 60):
     # Sort by activity (desc)
     results.sort(key=lambda x: x.request_count, reverse=True)
     return results[:50] # Top 50
+
+def get_attack_type(line: str, status_code: int) -> str:
+    line_lower = line.lower()
+    
+    # Check for specific patterns
+    if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
+        return "SQL Injection"
+    if "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
+        return "XSS"
+    if "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
+        return "LFI"
+    if "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
+        return "RCE"
+    if "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
+        return "Scanner"
+    if "head /" in line_lower: # Simple heuristic
+        return "Scanner"
+    if "login" in line_lower or "admin" in line_lower:
+        # Heuristic for BF if status is 4xx, but let's label it interesting anyway
+        return "Brute Force"
+    
+    if status_code >= 400 and status_code < 500:
+         return "Suspicious"
+         
+    return "Safe"
+
+def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str = None, attack_type: str = None, time_range: str = "Last 24h"):
+
+    logs = []
+    
+    args = [search, status, attack_type, time_range]
+    # Default if no specific filters (Time range defaults to Last 24h, so if it is default, we can consider it "default" ONLY if we assume log file is small or recent. But for big logs, 24h is a filter).
+    # Actually, if time_range is "Last 24h" (default), we usually want to verify. 
+    # Let's consider "default filter" only if NO filters are touched.
+    # However, user asks to fix "filter table".
+    # For optimization: If (search is None) AND (status is All) AND (attack_type is All) AND (time_range is All/Lifetime or just ignored), we do direct slice.
+    # But current default `time_range` is "Last 24h". 
+    # Let's handle "Last 24h" as a filter.
+    
+    # Calculate cutoff time
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff_time = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+    
+    if time_range == "Last Hour":
+        cutoff_time = now - datetime.timedelta(hours=1)
+    elif time_range == "Last 24h":
+        cutoff_time = now - datetime.timedelta(hours=24)
+    elif time_range == "Last 3d":
+        cutoff_time = now - datetime.timedelta(days=3)
+    elif time_range == "Last 7d":
+        # Note: frontend sends "Last 7d" but initially it was "7 Days". 
+        # We handle both just in case.
+        cutoff_time = now - datetime.timedelta(days=7)
+    elif time_range == "7 Days":
+        cutoff_time = now - datetime.timedelta(days=7)
+    
+    # Check if we can use optimized path
+    # We can ONLY use optimized path if we are NOT filtering by anything AND time_range covers 'everything' (e.g. log file is newer than cutoff).
+    # Safest is to use fallback scan if ANY filter is active.
+    # We will assume "Last 24h" is a filter that requires scanning unless we are sure.
+    # For this implementation, let's treat any time_range other than "All" (if we had it) as a filter.
+    is_strict_default = (search is None or search == "") and (status is None or status == "All") and (attack_type is None or attack_type == "All") and (time_range == "All Time")  
+
+    if os.path.exists(settings.ACCESS_LOG_PATH):
+        try:
+            with open(settings.ACCESS_LOG_PATH, "r") as f:
+                lines = f.readlines()
+                total = len(lines)
+                
+                # Optimized Path for Default Filters (Direct Slicing)
+                if is_strict_default:
+                    # Reverse Index Logic
+                    # Newest is at index len-1. 
+                    # Page 1 (0-10) -> indices [len-1, len-2 ... len-10]
+                    start_idx = (page - 1) * limit
+                    end_idx = start_idx + limit
+                    
+                    # Ensure boundaries
+                    # If total=100, page=1, start=0, end=10.
+                    # We want lines from (total-1-0) down to (total-1-9)
+                    
+                    logs_data = []
+                    count = 0
+                    # Iterate backwards from end of file
+                    for i in range(len(lines) - 1, -1, -1):
+                        if count >= end_idx:
+                            break
+                        
+                        if count >= start_idx:
+                            line = lines[i]
+                            # Parse SINGLE line
+                            parsed = parse_single_line_safely(line, i, len(lines))
+                            if parsed:
+                                logs.append(parsed)
+                                
+                        count += 1
+                        
+                    return WafLogListResponse(
+                        data=logs,
+                        total=total,
+                        page=page,
+                        limit=limit,
+                        total_pages=math.ceil(total / limit)
+                    )
+
+                # Fallback: Full Scan for Filtered Results (Existing Logic)
+                # Parse in reverse to show newest first
+                for i, line in enumerate(reversed(lines)):
+                    # existing parsing logic...
+                    try:
+                        entry = parse_single_line_safely(line, i, len(lines))
+                        if not entry: continue
+
+                        # Filtering
+                        # Filtering
+                        # Time Filter
+                        try:
+                            # entry.timestamp is "27/Oct/2023:14:02:11"
+                            # Parse it
+                            dt_entry = datetime.datetime.strptime(entry.timestamp, "%d/%b/%Y:%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+                            if dt_entry < cutoff_time:
+                                # Optimization: Since we read reversed (newest first), 
+                                # if current log is older than cutoff, all subsequent logs are also older.
+                                break
+                        except:
+                            # If parsing fails, maybe include or exclude?
+                            pass
+
+                        if search:
+                            s = search.lower()
+                            if s not in entry.source_ip.lower() and s not in entry.path.lower() and s not in entry.attack_type.lower():
+                                continue
+
+                        if status and status != "All":
+                            # Generic check -> if status filter is a number, match it exactly
+                            if status.isdigit() and entry.status_code != int(status):
+                                continue
+
+                        if attack_type and attack_type != "All":
+                            if attack_type == "Attacks Only":
+                                if entry.attack_type == "Safe": continue
+                            elif attack_type == "Safe Traffic" or attack_type == "Allowed Only":
+                                if entry.attack_type != "Safe": continue
+                            elif entry.attack_type != attack_type:
+                                 continue
+                        
+                        logs.append(entry)
+                    except Exception:
+                        continue
+                        
+        except Exception as e:
+            print(f"Error parse logs: {e}")
+
+    # Pagination for Filtered Results
+    total = len(logs)
+    start = (page - 1) * limit
+    end = start + limit
+    data = logs[start:end]
+    
+    return WafLogListResponse(
+        data=data,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=math.ceil(total / limit)
+    )
+
+def parse_single_line_safely(line, index, total_lines):
+    try:
+        parts = line.split(' [')
+        if len(parts) < 2: return None
+        
+        ip_part = line.split(' - -')[0].strip()
+        time_part_raw = parts[1].split(']')[0]
+        time_part = time_part_raw.split(' ')[0] # Remove +0000
+        
+        rest = parts[1].split(']')[1]
+        req_parts = rest.split('"')
+        if len(req_parts) < 2: return None
+        
+        request_line = req_parts[1]
+        req_tokens = request_line.split()
+        method = req_tokens[0] if len(req_tokens) > 0 else "-"
+        path = req_tokens[1] if len(req_tokens) > 1 else "-"
+        
+        if len(rest.split('"')) > 2:
+             status_part = rest.split('"')[2].strip().split()[0]
+             status_code = int(status_part) if status_part.isdigit() else 0
+        else:
+             status_code = 0
+        
+        current_type = get_attack_type(line, status_code)
+        if status_code == 200 and current_type == "Suspicious":
+            current_type = "Safe"
+            
+        countries = ["US", "DE", "CN", "RU", "ID", "SG", "JP", "BR"]
+        c_idx = sum(map(ord, ip_part)) % len(countries)
+
+        return WafLogEntry(
+            id=total_lines - index, # ID based on line number (approx)
+            timestamp=time_part,
+            source_ip=ip_part,
+            method=method,
+            path=path,
+            attack_type=current_type,
+            status_code=status_code,
+            country=countries[c_idx]
+        )
+    except:
+        return None

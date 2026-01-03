@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Shield, 
   Database, 
@@ -21,6 +21,9 @@ const RulesPage = () => {
     const [customRules, setCustomRules] = useState('');
     const [loading, setLoading] = useState(true);
     const [statusMsg, setStatusMsg] = useState(null);
+    
+    // Refs
+    const lineNumbersRef = useRef(null);
 
     // Initial Fetch
     useEffect(() => {
@@ -193,17 +196,46 @@ const RulesPage = () => {
                              </div>
                         </div>
 
-                        <div className="bg-[#0f172a] border border-slate-800 rounded-lg overflow-hidden flex flex-col h-[500px]">
-                            <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
-                                <span className="text-xs font-mono text-slate-400">custom_rules.conf</span>
-                                <div className="text-[10px] text-slate-600 font-mono">UTF-8</div>
+                        <div className="bg-[#0f172a] border border-slate-800 rounded-lg overflow-hidden flex flex-col shadow-2xl shadow-black/50">
+                            {/* Editor Header */}
+                            <div className="flex items-center justify-between px-4 py-2.5 bg-[#0f172a] border-b border-slate-800 select-none">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></div>
+                                    <span className="text-sm font-mono font-medium text-slate-200 tracking-tight">custom_rules.conf</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+                                    <span>Fira Code</span>
+                                    <span>•</span>
+                                    <span>UTF-8</span>
+                                </div>
                             </div>
-                            <textarea
-                                value={customRules}
-                                onChange={(e) => setCustomRules(e.target.value)}
-                                className="flex-1 w-full bg-[#0f172a] text-slate-300 font-mono text-sm p-4 focus:outline-none resize-none"
-                                spellCheck="false"
-                            />
+                            
+                            {/* Editor Body */}
+                            <div className="relative flex h-[500px] group">
+                                {/* Line Numbers */}
+                                <div 
+                                    ref={lineNumbersRef}
+                                    className="hidden sm:block w-12 py-4 text-right pr-4 text-slate-500 select-none bg-[#1e293b] border-r border-[#334155] font-mono text-[13px] leading-6 overflow-hidden"
+                                >
+                                    {customRules.split('\n').map((_, i) => (
+                                        <div key={i} className="text-slate-500">{i + 1}</div>
+                                    ))}
+                                </div>
+
+                                {/* Code Area */}
+                                <textarea
+                                    value={customRules}
+                                    onChange={(e) => setCustomRules(e.target.value)}
+                                    onScroll={(e) => {
+                                        if (lineNumbersRef.current) {
+                                            lineNumbersRef.current.scrollTop = e.target.scrollTop;
+                                        }
+                                    }}
+                                    className="flex-1 w-full bg-[#020617] text-slate-300 font-mono text-[13px] leading-6 p-4 focus:outline-none resize-none selection:bg-blue-500/30 whitespace-pre"
+                                    spellCheck="false"
+                                    placeholder="# Add your custom ModSecurity rules here..."
+                                />
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-3">
@@ -216,7 +248,7 @@ const RulesPage = () => {
                                         setLoading(false);
                                     });
                                 }}
-                                className="border-slate-700 text-slate-400 hover:text-white"
+                                className="bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
                             >
                                 <RotateCcw className="w-4 h-4 mr-2" />
                                 Discard Changes
