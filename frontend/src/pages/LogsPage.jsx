@@ -94,6 +94,60 @@ const LogsPage = () => {
         }
     };
 
+    const handleExport = async () => {
+        // Show temporary feedback if needed? We will just rely on browser download behavior for now, 
+        // or we could add a toast.
+        try {
+            const res = await getLogs({
+                page: 1,
+                limit: 5000, // Export up to 5000 recent logs matching filters
+                search: search || undefined,
+                status: statusFilter,
+                attack_type: activeFilter,
+                time_range: timeRange
+            });
+            
+            const dataToExport = res.data.data;
+            if (!dataToExport || dataToExport.length === 0) {
+                alert("No logs found to export.");
+                return;
+            }
+
+            // CSV Header
+            const headers = ["ID", "Timestamp", "Source IP", "Country", "Method", "Path", "Status", "Type"];
+            const csvRows = [headers.join(",")];
+            
+            // CSV Body
+            dataToExport.forEach(row => {
+                const values = [
+                    row.id,
+                    `"${row.timestamp}"`,
+                    `"${row.source_ip}"`,
+                    `"${row.country}"`,
+                    `"${row.method}"`,
+                    `"${row.path.replace(/"/g, '""')}"`, // Handle quotes in path
+                    row.status_code,
+                    `"${row.attack_type}"`
+                ];
+                csvRows.push(values.join(","));
+            });
+            
+            const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+            const encodedUri = encodeURI(csvContent);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `waf_logs_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+        } catch (err) {
+            console.error("Export error:", err);
+            alert("Failed to export logs.");
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -106,7 +160,10 @@ const LogsPage = () => {
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <button 
+                        onClick={handleExport}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors active:scale-95"
+                    >
                         <Download className="w-4 h-4" />
                         Export CSV
                     </button>
