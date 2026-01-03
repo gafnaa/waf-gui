@@ -358,7 +358,8 @@ def parse_single_line_safely(line, index, total_lines):
         if len(parts) < 2: return None
         
         ip_part = line.split(' - -')[0].strip()
-        time_part = parts[1].split(']')[0]
+        time_part_raw = parts[1].split(']')[0]
+        time_part = time_part_raw.split(' ')[0] # Remove +0000
         
         rest = parts[1].split(']')[1]
         req_parts = rest.split('"')
