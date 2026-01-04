@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,10 +9,34 @@ import {
   Settings,
   LogOut 
 } from 'lucide-react';
+import { getUserProfile } from '../services/api';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [user, setUser] = useState({ name: 'Loading...', role: 'Security Admin' });
+
+  const fetchUser = async () => {
+      try {
+          const res = await getUserProfile();
+          setUser({
+              name: res.data.full_name || res.data.username,
+              role: 'Security Admin' // Static for now, can be dynamic later
+          });
+      } catch (err) {
+          console.error("Failed to fetch user for sidebar", err);
+      }
+  };
+
+  useEffect(() => {
+      fetchUser();
+
+      // Listen for updates from SettingsPage
+      const handleUpdate = () => fetchUser();
+      window.addEventListener('user-profile-updated', handleUpdate);
+
+      return () => window.removeEventListener('user-profile-updated', handleUpdate);
+  }, []);
 
   const menuItems = [
     { path: '/overview', label: 'Overview', icon: LayoutDashboard },
@@ -42,8 +66,6 @@ const Sidebar = () => {
         </div>
       </div>
 
-
-
       {/* Navigation Menu */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2 no-scrollbar">
          {menuItems.map((item) => {
@@ -69,13 +91,17 @@ const Sidebar = () => {
 
       {/* Footer Info */}
       <div className="p-4 border-t border-slate-800/50 space-y-2">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                  <span className="text-xs font-bold text-slate-400">AP</span>
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer group">
+              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden relative">
+                  <img 
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2563eb&color=fff&size=128`} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
               </div>
               <div className="overflow-hidden">
-                  <h4 className="text-sm font-medium text-slate-200 truncate">Alexander P.</h4>
-                  <p className="text-xs text-slate-500 truncate">Security Admin</p>
+                  <h4 className="text-sm font-bold text-slate-200 truncate group-hover:text-white transition-colors">{user.name}</h4>
+                  <p className="text-xs text-slate-500 truncate">{user.role}</p>
               </div>
           </div>
           <button 

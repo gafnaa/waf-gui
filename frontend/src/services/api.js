@@ -37,4 +37,9 @@ export const clearWafCache = () => api.post('/system/clear-cache');
 export const manageService = (serviceName, action) => api.post(`/system/services/${serviceName}/${action}`);
 export const getLogs = (params) => api.get('/logs', { params });
 
+// User Management
+export const getUserProfile = () => api.get('/user');
+export const updateUserProfile = (full_name) => api.put('/user/profile', { full_name });
+export const changePassword = (current_password, new_password) => api.put('/user/password', { current_password, new_password });
+
 export default api;
