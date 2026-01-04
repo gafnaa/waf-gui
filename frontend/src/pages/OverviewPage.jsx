@@ -343,7 +343,7 @@ const OverviewPage = () => {
                         {stats.system_status}
                     </span>
                 </div>
-                <Button variant="ghost" className="text-xs text-blue-400 hover:text-blue-300 p-0 h-auto font-normal">
+                <Button variant="ghost" className="text-xs text-blue-500 hover:text-blue-400 hover:bg-transparent p-0 h-auto font-normal cursor-pointer transition-colors">
                     Configure Rules <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
             </div>
