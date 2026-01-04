@@ -7,6 +7,7 @@ import OverviewPage from './pages/OverviewPage';
 import AccessControlPage from './pages/AccessControlPage';
 import ServerMonitorPage from './pages/ServerMonitorPage';
 import LogsPage from './pages/LogsPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Placeholder Components for missing pages
 const PlaceholderPage = ({ title }) => (
@@ -70,7 +71,7 @@ function App() {
                     <Route path="access-control" element={<AccessControlPage />} />
                     <Route path="server-monitor" element={<ServerMonitorPage />} />
                     <Route path="logs" element={<LogsPage />} />
-                    <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+                    <Route path="settings" element={<SettingsPage />} />
                     
                 </Route>
             </Route>
