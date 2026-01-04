@@ -95,14 +95,14 @@ const Sidebar = () => {
           {/* Theme Toggle */}
           <button 
             onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium dark:text-slate-400 text-slate-600 dark:hover:bg-slate-800/50 hover:bg-slate-100 transition-colors mb-2"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium dark:text-slate-400 text-slate-600 dark:hover:bg-slate-800/50 hover:bg-slate-100 transition-colors mb-2 group active:scale-95"
           >
-             <span className="flex items-center gap-2">
-                 {theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                 <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+             <span className="flex items-center gap-2.5">
+                 {theme === 'dark' ? <Moon className="w-4 h-4 text-blue-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                 <span className="dark:group-hover:text-slate-200 group-hover:text-slate-900 transition-colors">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
              </span>
-             <div className={`w-8 h-4 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-blue-600' : 'bg-slate-300'}`}>
-                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${theme === 'dark' ? 'left-4.5' : 'left-0.5'}`} style={{ transform: theme === 'dark' ? 'translateX(100%)' : 'translateX(0)' }}></div>
+             <div className={`w-9 h-5 rounded-full relative transition-colors duration-300 ${theme === 'dark' ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                 <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${theme === 'dark' ? 'translate-x-4' : 'translate-x-0'}`}></div>
              </div>
           </button>
 
