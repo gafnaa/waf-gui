@@ -38,7 +38,7 @@ const DashboardLayout = () => {
     const location = useLocation();
 
     return (
-        <div className="min-h-screen bg-[#050A18] text-slate-200 font-sans flex overflow-hidden">
+        <div className="min-h-screen dark:bg-[#050A18] bg-slate-50 dark:text-slate-200 text-slate-900 font-sans flex overflow-hidden transition-colors duration-300">
             {/* Sidebar */}
             <Sidebar />
 

@@ -127,8 +127,8 @@ const AccessControlPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Access Control (IP Management)</h2>
-                    <p className="text-sm text-slate-500">Manage network access policies, blocklists, and whitelists.</p>
+                    <h2 className="text-2xl font-bold dark:text-white text-slate-900 tracking-tight">Access Control (IP Management)</h2>
+                    <p className="text-sm dark:text-slate-500 text-slate-600">Manage network access policies, blocklists, and whitelists.</p>
                 </div>
             </div>
 
@@ -137,17 +137,17 @@ const AccessControlPage = () => {
                 
                 {/* Left Column: Add Rule Form */}
                 <div className="lg:col-span-4 space-y-6">
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                    <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center gap-2 mb-6">
-                            <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <div className="p-2 dark:bg-blue-500/10 bg-blue-50 rounded-lg">
                                 <Plus className="w-4 h-4 text-blue-500" />
                             </div>
-                            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Manual Rule Entry</h3>
+                            <h3 className="text-sm font-bold dark:text-slate-200 text-slate-900 uppercase tracking-wider">Manual Rule Entry</h3>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">IP Address / CIDR</label>
+                                <label className="text-xs font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wide">IP Address / CIDR</label>
                                 <div className="relative">
                                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600">
                                         <Globe className="w-4 h-4" />
@@ -156,7 +156,7 @@ const AccessControlPage = () => {
                                         name="ip"
                                         value={formData.ip}
                                         onChange={handleInputChange}
-                                        className="pl-9 bg-[#0b1121] border-slate-700 text-slate-200 focus-visible:ring-blue-600"
+                                        className="pl-9 dark:bg-[#0b1121] bg-slate-50 dark:border-slate-700 border-slate-300 dark:text-slate-200 text-slate-900 focus-visible:ring-blue-600"
                                         placeholder="e.g., 192.168.1.1"
                                         required
                                     />
@@ -165,13 +165,13 @@ const AccessControlPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Action</label>
+                                <label className="text-xs font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wide">Action</label>
                                 <div className="relative">
                                     <select 
                                         name="action"
                                         value={formData.action}
                                         onChange={handleInputChange}
-                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 font-sans focus:outline-none focus:border-blue-500 appearance-none"
+                                        className="w-full h-10 dark:bg-[#0b1121] bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-md px-3 text-sm dark:text-slate-200 text-slate-900 font-sans focus:outline-none focus:border-blue-500 appearance-none"
                                     >
                                         <option value="deny">Blacklist (Block)</option>
                                         <option value="allow">Whitelist (Allow)</option>
@@ -181,13 +181,13 @@ const AccessControlPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Duration</label>
+                                <label className="text-xs font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wide">Duration</label>
                                 <div className="relative">
                                     <select 
                                         name="duration"
                                         value={formData.duration}
                                         onChange={handleInputChange}
-                                        className="w-full h-10 bg-[#0b1121] border border-slate-700 rounded-md px-3 text-sm text-slate-200 font-sans focus:outline-none focus:border-blue-500 appearance-none"
+                                        className="w-full h-10 dark:bg-[#0b1121] bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-md px-3 text-sm dark:text-slate-200 text-slate-900 font-sans focus:outline-none focus:border-blue-500 appearance-none"
                                     >
                                         <option value="Permanent">Permanent</option>
                                         <option value="24h">Temporary (24 Hours)</option>
@@ -198,12 +198,12 @@ const AccessControlPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Reason / Note</label>
+                                <label className="text-xs font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wide">Reason / Note</label>
                                 <textarea 
                                     name="note"
                                     value={formData.note}
                                     onChange={handleInputChange}
-                                    className="w-full bg-[#0b1121] border border-slate-700 rounded-md p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 min-h-[100px]"
+                                    className="w-full dark:bg-[#0b1121] bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-md p-3 text-sm dark:text-slate-200 text-slate-900 focus:outline-none focus:border-blue-500 min-h-[100px]"
                                     placeholder="Optional context for audit logs..."
                                 />
                             </div>
@@ -223,18 +223,18 @@ const AccessControlPage = () => {
 
                 {/* Right Column: List */}
                 <div className="lg:col-span-8">
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col h-full min-h-[600px]">
+                    <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl flex flex-col h-full min-h-[600px] shadow-sm">
                         
                         {/* Toolbar */}
-                        <div className="p-4 border-b border-slate-800 flex justify-between items-center gap-4">
+                        <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex justify-between items-center gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-emerald-500/10 rounded">
                                        <Globe className="w-4 h-4 text-emerald-500" />
                                     </div>
-                                    <span className="text-sm font-bold text-slate-200">LIVE TRAFFIC (Last 30m)</span>
+                                    <span className="text-sm font-bold dark:text-slate-200 text-slate-900">LIVE TRAFFIC (Last 30m)</span>
                                 </div>
-                                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-bold text-slate-500 border border-slate-700">
+                                <span className="px-2 py-0.5 rounded-full dark:bg-slate-800 bg-slate-100 text-[10px] font-bold dark:text-slate-500 text-slate-600 border dark:border-slate-700 border-slate-200">
                                     {activeIps.length} Active IPs
                                 </span>
                             </div>
@@ -247,7 +247,7 @@ const AccessControlPage = () => {
                                         placeholder="Search IP..." 
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="h-8 bg-[#0b1121] border border-slate-700 rounded-lg pl-8 pr-3 text-xs text-slate-300 focus:outline-none focus:border-slate-500 w-48 transition-all"
+                                        className="h-8 dark:bg-[#0b1121] bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-lg pl-8 pr-3 text-xs dark:text-slate-300 text-slate-900 focus:outline-none focus:border-slate-500 w-48 transition-all"
                                     />
                                 </div>
                             </div>
@@ -257,15 +257,15 @@ const AccessControlPage = () => {
                         <div className="flex-1 overflow-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-950/30 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-                                        <th className="px-6 py-3 border-b border-slate-800/50 w-24">Status</th>
-                                        <th className="px-6 py-3 border-b border-slate-800/50">IP Address</th>
-                                        <th className="px-6 py-3 border-b border-slate-800/50 text-right">Requests</th>
-                                        <th className="px-6 py-3 border-b border-slate-800/50 text-right">Attacks</th>
-                                        <th className="px-6 py-3 border-b border-slate-800/50 text-right">Action</th>
+                                    <tr className="dark:bg-slate-950/30 bg-slate-50 text-[10px] uppercase font-bold dark:text-slate-500 text-slate-600 tracking-wider">
+                                        <th className="px-6 py-3 border-b dark:border-slate-800/50 border-slate-200 w-24">Status</th>
+                                        <th className="px-6 py-3 border-b dark:border-slate-800/50 border-slate-200">IP Address</th>
+                                        <th className="px-6 py-3 border-b dark:border-slate-800/50 border-slate-200 text-right">Requests</th>
+                                        <th className="px-6 py-3 border-b dark:border-slate-800/50 border-slate-200 text-right">Attacks</th>
+                                        <th className="px-6 py-3 border-b dark:border-slate-800/50 border-slate-200 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/30">
+                                <tbody className="divide-y dark:divide-slate-800/30 divide-slate-200">
                                     {loading ? (
                                         <tr>
                                             <td colSpan="5" className="px-6 py-12 text-center text-slate-500 text-sm">
@@ -280,37 +280,37 @@ const AccessControlPage = () => {
                                         </tr>
                                     ) : (
                                         currentItems.map((item, idx) => (
-                                            <tr key={idx} className="group hover:bg-slate-800/20 transition-colors">
+                                            <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
                                                 <td className="px-6 py-4">
                                                     {item.rule_status === 'Blocked' ? (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/20">BLOCKED</span>
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-500 border border-rose-500/20">BLOCKED</span>
                                                     ) : item.attack_count > 0 ? (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">ATTACK</span>
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20">ATTACK</span>
                                                     ) : (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">NORMAL</span>
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/20">NORMAL</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <span className="font-mono text-sm text-slate-200 font-medium">{item.ip}</span>
+                                                        <span className="font-mono text-sm dark:text-slate-200 text-slate-900 font-medium">{item.ip}</span>
                                                         <span className="text-lg leading-none" title={item.country}>{getFlag(item.country)}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <span className="text-sm text-slate-300 font-mono">{item.request_count}</span>
+                                                    <span className="text-sm dark:text-slate-300 text-slate-600 font-mono">{item.request_count}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {item.attack_count > 0 ? (
-                                                        <span className="text-sm text-rose-400 font-bold font-mono">{item.attack_count}</span>
+                                                        <span className="text-sm text-rose-500 font-bold font-mono">{item.attack_count}</span>
                                                     ) : (
-                                                        <span className="text-sm text-slate-600 font-mono">-</span>
+                                                        <span className="text-sm dark:text-slate-600 text-slate-400 font-mono">-</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {item.rule_status === 'Blocked' ? (
                                                         <button 
                                                             onClick={() => handleUnblockIp(item.ip)}
-                                                            className="cursor-pointer text-xs font-medium px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-white shadow-sm transition-all active:scale-95"
+                                                            className="cursor-pointer text-xs font-medium px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white shadow-sm transition-all active:scale-95"
                                                         >
                                                             Unblock
                                                         </button>
@@ -332,25 +332,25 @@ const AccessControlPage = () => {
                         </div>
                         
                         {/* Footer / Pagination */}
-                        <div className="p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-                             <span>Showing <span className="text-slate-300 font-medium">{filteredIps.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredIps.length)}</span> of {filteredIps.length}</span>
+                        <div className="p-4 border-t dark:border-slate-800 border-slate-200 flex justify-between items-center text-xs text-slate-500">
+                             <span>Showing <span className="dark:text-slate-300 text-slate-700 font-medium">{filteredIps.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredIps.length)}</span> of {filteredIps.length}</span>
                              
                              <div className="flex items-center gap-2">
                                 <button 
                                     onClick={() => paginate(currentPage - 1)}
                                     disabled={currentPage === 1}
-                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-1 rounded dark:bg-slate-800 bg-white border border-slate-200 dark:border-slate-700 dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
                                 <div className="flex items-center gap-1 px-2">
-                                    <span className="text-slate-300">Page {currentPage}</span>
+                                    <span className="dark:text-slate-300 text-slate-700">Page {currentPage}</span>
                                     <span className="text-slate-600">/ {totalPages || 1}</span>
                                 </div>
                                 <button 
                                     onClick={() => paginate(currentPage + 1)}
                                     disabled={currentPage === totalPages || totalPages === 0}
-                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-1 rounded dark:bg-slate-800 bg-white border border-slate-200 dark:border-slate-700 dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                 >
                                     <ChevronRight className="w-4 h-4" />
                                 </button>

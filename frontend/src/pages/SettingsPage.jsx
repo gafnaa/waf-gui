@@ -85,9 +85,9 @@ const SettingsPage = () => {
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Settings</h2>
+                    <h2 className="text-2xl font-bold dark:text-white text-slate-900 tracking-tight">Settings</h2>
                     <div className="flex items-center gap-2 mt-1 text-slate-500 text-sm">
-                        <span className="bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">Rocky Linux Server #01</span>
+                        <span className="dark:bg-slate-800 bg-slate-200 px-1.5 py-0.5 rounded text-xs font-mono dark:text-slate-300 text-slate-600">Rocky Linux Server #01</span>
                         <span>•</span>
                         <span>Configuration</span>
                     </div>
@@ -102,12 +102,12 @@ const SettingsPage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Profile Section */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
-                    <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl overflow-hidden flex flex-col h-full shadow-sm">
+                    <div className="px-6 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3">
+                        <div className="p-2 dark:bg-blue-500/10 bg-blue-50 rounded-lg text-blue-400">
                             <User className="w-5 h-5" />
                         </div>
-                        <h3 className="font-bold text-slate-200">Account Profile</h3>
+                        <h3 className="font-bold dark:text-slate-200 text-slate-900">Account Profile</h3>
                     </div>
                     <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
                         <div className="space-y-6">
@@ -118,7 +118,7 @@ const SettingsPage = () => {
                                     name="name"
                                     value={profile.name} 
                                     onChange={handleProfileChange}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+                                    className="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-4 py-2.5 dark:text-slate-200 text-slate-900 focus:outline-none focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -129,7 +129,7 @@ const SettingsPage = () => {
                                     value={profile.username} 
                                     onChange={handleProfileChange}
                                     disabled
-                                    className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
+                                    className="w-full dark:bg-slate-950/50 bg-slate-100 border dark:border-slate-800 border-slate-300 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
                                 />
                                 <p className="text-[10px] text-slate-600">Username cannot be changed directly.</p>
                             </div>
@@ -137,7 +137,7 @@ const SettingsPage = () => {
                         <div className="flex justify-end pt-4">
                             <button 
                                 onClick={() => handleSave('Profile')}
-                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
                             >
                                 <Save className="w-4 h-4" />
                                 Save Profile
@@ -147,12 +147,12 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Security Section */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
-                    <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl overflow-hidden flex flex-col h-full shadow-sm">
+                    <div className="px-6 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3">
+                        <div className="p-2 dark:bg-indigo-500/10 bg-indigo-50 rounded-lg text-indigo-400">
                             <Lock className="w-5 h-5" />
                         </div>
-                        <h3 className="font-bold text-slate-200">Security</h3>
+                        <h3 className="font-bold dark:text-slate-200 text-slate-900">Security</h3>
                     </div>
                     <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
                         <div className="space-y-6">
@@ -167,7 +167,7 @@ const SettingsPage = () => {
                                         onChange={handleSecurityChange}
                                         placeholder="Current password"
                                         disabled
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-500 cursor-not-allowed focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600 [color-scheme:dark]"
+                                        className="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-800 border-slate-300 rounded-lg pl-10 pr-10 py-2.5 text-slate-500 cursor-not-allowed focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-500 dark:placeholder:text-slate-600 dark:[color-scheme:dark]"
                                     />
                                 </div>
                             </div>
@@ -181,7 +181,7 @@ const SettingsPage = () => {
                                         value={security.newPass}
                                         onChange={handleSecurityChange}
                                         placeholder="New strong password"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+                                        className="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg pl-10 pr-10 py-2.5 dark:text-slate-200 text-slate-900 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600"
                                     />
                                     <button 
                                         onClick={() => setShowPassword(!showPassword)}
@@ -195,7 +195,7 @@ const SettingsPage = () => {
                         <div className="flex justify-end pt-4">
                             <button 
                                 onClick={() => handleSave('Security')}
-                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
                             >
                                 <Save className="w-4 h-4" />
                                 Update Password
@@ -206,19 +206,19 @@ const SettingsPage = () => {
             </div>
 
             {/* Notifications Section */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
-                    <div className="p-2 bg-sky-500/10 rounded-lg text-sky-400">
+            <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3">
+                    <div className="p-2 dark:bg-sky-500/10 bg-sky-50 rounded-lg text-sky-400">
                         <Bell className="w-5 h-5" />
                     </div>
-                    <h3 className="font-bold text-slate-200">Notifications</h3>
+                    <h3 className="font-bold dark:text-slate-200 text-slate-900">Notifications</h3>
                 </div>
                 <div className="p-6 space-y-6">
                     {/* Telegram Config */}
                     <div className="space-y-4">
                          <div className="flex items-start justify-between">
                             <div>
-                                <h4 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <h4 className="text-sm font-bold dark:text-slate-200 text-slate-900 flex items-center gap-2">
                                     <Send className="w-4 h-4 text-sky-400" />
                                     Telegram Alerts
                                 </h4>
@@ -233,7 +233,7 @@ const SettingsPage = () => {
                                     checked={notifications.telegramEnabled}
                                     onChange={() => handleNotifToggle('telegramEnabled')}
                                 />
-                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                <div className="w-11 h-6 dark:bg-slate-700 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
                          </div>
 
@@ -247,7 +247,7 @@ const SettingsPage = () => {
                                          value={notifications.telegramBotToken}
                                          onChange={handleNotifChange}
                                          placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-sky-500 transition-colors text-sm font-mono placeholder:text-slate-700"
+                                         className="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-4 py-2.5 dark:text-slate-200 text-slate-900 focus:outline-none focus:border-sky-500 transition-colors text-sm font-mono placeholder:text-slate-400 dark:placeholder:text-slate-700"
                                      />
                                  </div>
                                  <div className="space-y-2">
@@ -258,19 +258,19 @@ const SettingsPage = () => {
                                          value={notifications.telegramChatId}
                                          onChange={handleNotifChange}
                                          placeholder="-100123456789"
-                                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-sky-500 transition-colors text-sm font-mono placeholder:text-slate-700"
+                                         className="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-4 py-2.5 dark:text-slate-200 text-slate-900 focus:outline-none focus:border-sky-500 transition-colors text-sm font-mono placeholder:text-slate-400 dark:placeholder:text-slate-700"
                                      />
                                  </div>
                              </div>
                          )}
                     </div>
 
-                    <div className="border-t border-slate-800 my-4"></div>
+                    <div className="border-t dark:border-slate-800 border-slate-200 my-4"></div>
 
                     {/* Daily Reports */}
                     <div className="flex items-start justify-between">
                         <div>
-                            <h4 className="text-sm font-bold text-slate-200">Daily Digest</h4>
+                            <h4 className="text-sm font-bold dark:text-slate-200 text-slate-900">Daily Digest</h4>
                             <p className="text-xs text-slate-500 mt-1">
                                 Receive a summary of valid vs blocked traffic every midnight (00:00 UTC).
                             </p>
@@ -282,14 +282,14 @@ const SettingsPage = () => {
                                 checked={notifications.dailyReports}
                                 onChange={() => handleNotifToggle('dailyReports')}
                             />
-                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 dark:bg-slate-700 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
                 </div>
             </div>
 
             {/* Danger Zone */}
-            <div className="border border-rose-500/20 bg-rose-500/5 rounded-xl overflow-hidden">
+            <div className="border border-rose-500/20 dark:bg-rose-500/5 bg-rose-50 rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-rose-500/20 flex items-center gap-3">
                     <div className="p-2 bg-rose-500/10 rounded-lg text-rose-500">
                         <ShieldAlert className="w-5 h-5" />
@@ -298,8 +298,8 @@ const SettingsPage = () => {
                 </div>
                 <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h4 className="text-sm font-bold text-slate-200">Factory Reset</h4>
-                        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                        <h4 className="text-sm font-bold dark:text-slate-200 text-slate-900">Factory Reset</h4>
+                        <p className="text-xs dark:text-slate-500 text-slate-600 mt-1 max-w-sm">
                             This will wipe all rules, logs, and custom configurations. This action cannot be undone.
                         </p>
                     </div>
