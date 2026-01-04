@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import { getSystemStatus, restartNginx, clearWafCache, manageService } from '../services/api';
 import { Button } from "../components/ui/button";
+import { useTheme } from "../context/ThemeContext";
 
 const ServerMonitorPage = () => {
     const [status, setStatus] = useState(null);
@@ -37,6 +38,7 @@ const ServerMonitorPage = () => {
     const [notification, setNotification] = useState(null);
     const [showRestartModal, setShowRestartModal] = useState(false);
     const [showClearCacheModal, setShowClearCacheModal] = useState(false);
+    const { theme } = useTheme();
 
     useEffect(() => {
         fetchStatus();
@@ -145,10 +147,15 @@ const ServerMonitorPage = () => {
 
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
 
+    // Chart Colors based on theme
+    const chartGridColor = theme === 'dark' ? '#1e293b' : '#e2e8f0'; // slate-800 vs slate-200
+    const toolTipBgs = theme === 'dark' ? '#0f172a' : '#ffffff';
+    const toolTipBorder = theme === 'dark' ? '#1e293b' : '#e2e8f0';
+    const toolTipText = theme === 'dark' ? '#f8fafc' : '#1e293b';
+
     return (
         <div className="space-y-6 relative">
              {/* Notification Toast */}
-            {/* Notification Toast */}
             {notification && (
                 <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-xl border flex items-center gap-3 transition-all duration-300 ${
                     isVisible 
@@ -165,7 +172,6 @@ const ServerMonitorPage = () => {
                     
                     <div className="flex flex-col">
                          <span className="text-sm font-medium">{notification.message}</span>
-                         {/* Optional progress bar for auto-dismiss could go here */}
                     </div>
 
                     <button 
@@ -180,69 +186,91 @@ const ServerMonitorPage = () => {
             {/* Restart Confirmation Modal */}
             {showRestartModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 border-l-4 border-l-rose-500">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-rose-500/10 rounded-full shrink-0">
-                                <AlertTriangle className="w-6 h-6 text-rose-500" />
+                    <div className="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 ring-1 dark:ring-white/5 ring-black/5">
+                        
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="p-4 bg-rose-100 dark:bg-rose-500/10 rounded-full">
+                                <Power className="w-8 h-8 text-rose-600 dark:text-rose-500" />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-lg font-bold text-slate-100">Restart Server?</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">
-                                    Are you sure you want to restart the Nginx server? This will <strong className="text-rose-400">interrupt traffic</strong> for a few seconds while the service reloads.
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold dark:text-white text-slate-900">System Restart</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[90%] mx-auto">
+                                    Are you sure you want to restart the Nginx server?
                                 </p>
                             </div>
+
+                            <div className="w-full bg-rose-50 dark:bg-rose-500/5 border border-rose-200 dark:border-rose-500/10 rounded-lg p-3 text-left">
+                                <div className="flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-500 shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Downtime Warning</p>
+                                        <p className="text-xs text-rose-800/80 dark:text-rose-200/70 leading-relaxed">
+                                            Traffic will be interrupted for a few seconds while the service reloads. Active connections may be dropped.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex gap-3 justify-end mt-4 pt-2">
+
+                        <div className="grid grid-cols-2 gap-3 mt-8">
                             <button 
                                 onClick={() => setShowRestartModal(false)}
-                                className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+                                className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-200 dark:text-slate-300 text-slate-700 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={confirmRestart}
-                                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-900/20 transition-all text-sm font-bold flex items-center gap-2"
+                                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-lg shadow-rose-900/20 transition-all active:scale-[0.98]"
                             >
-                                <Power className="w-4 h-4" />
-                                Restart Server
+                                Restart Now
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Clear Cache Confirmation Modal */}
             {showClearCacheModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 border-l-4 border-l-amber-500">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-amber-500/10 rounded-full shrink-0">
-                                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                    <div className="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 ring-1 dark:ring-white/5 ring-black/5">
+                        
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="p-4 bg-amber-100 dark:bg-amber-500/10 rounded-full">
+                                <RefreshCw className="w-8 h-8 text-amber-600 dark:text-amber-500" />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-lg font-bold text-slate-100">Clear WAF Cache?</h3>
-                                <div className="text-sm text-slate-400 leading-relaxed space-y-2">
-                                    <p>Are you sure you want to clear the entire WAF cache?</p>
-                                    <ul className="list-disc pl-4 space-y-1 text-slate-500">
-                                        <li>This will cause a <strong className="text-amber-400">temporary performance drop</strong>.</li>
-                                        <li>Initial requests will be slower while the cache rebuilds.</li>
-                                        <li>Backend server load may increase significantly.</li>
-                                    </ul>
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold dark:text-white text-slate-900">Clear WAF Cache?</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[90%] mx-auto">
+                                    You are about to purge the entire WAF cache. This action cannot be undone.
+                                </p>
+                            </div>
+
+                            <div className="w-full bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/10 rounded-lg p-3 text-left">
+                                <div className="flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Performance Impact</p>
+                                        <p className="text-xs text-amber-800/80 dark:text-amber-200/70 leading-relaxed">
+                                            Clearing the cache will cause a temporary spike in backend server load as the cache rebuilds.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex gap-3 justify-end mt-4 pt-2">
+
+                        <div className="grid grid-cols-2 gap-3 mt-8">
                             <button 
                                 onClick={() => setShowClearCacheModal(false)}
-                                className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+                                className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-200 dark:text-slate-300 text-slate-700 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={confirmClearCache}
-                                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20 transition-all text-sm font-bold flex items-center gap-2"
+                                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
                             >
-                                <RefreshCw className="w-4 h-4" />
                                 Clear Cache
                             </button>
                         </div>
@@ -253,26 +281,25 @@ const ServerMonitorPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Server Management</h2>
+                    <h2 className="text-2xl font-bold dark:text-white text-slate-900 tracking-tight">Server Management</h2>
                     <div className="flex items-center gap-2 mt-1">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-sm text-slate-400 font-mono">Production-Server-01 (192.168.1.10)</span>
+                        <span className="text-sm dark:text-slate-400 text-slate-600 font-mono">Production-Server-01 (192.168.1.10)</span>
                     </div>
                 </div>
                 
                 <div className="flex gap-3">
-                    <span className="px-3 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <span className="px-3 py-1 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                         <CheckCircleIcon className="w-3 h-3" />
                         System Online
                     </span>
                     <button 
                         onClick={handleManualRefresh}
-                        className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700 hover:bg-slate-700 transition-colors cursor-pointer"
+                        className="p-2 rounded-lg dark:bg-slate-800 bg-white dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white border dark:border-slate-700 border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-sm"
                         title="Refresh Data"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    {/* Notification Bell & Help would go here */}
                 </div>
             </div>
 
@@ -313,11 +340,11 @@ const ServerMonitorPage = () => {
                 />
 
                 {/* Uptime */}
-                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full">
+                <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full shadow-sm">
                      <div className="flex justify-between items-start mb-4">
                         <div>
                             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Uptime</p>
-                            <h3 className="text-2xl font-bold text-white mt-1">{status.uptime}</h3>
+                            <h3 className="text-2xl font-bold dark:text-white text-slate-900 mt-1">{status.uptime}</h3>
                         </div>
                         <div className="p-2 bg-emerald-500/10 rounded-lg">
                             <Clock className="w-5 h-5 text-emerald-500" />
@@ -333,18 +360,18 @@ const ServerMonitorPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* CPU Realtime */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 min-h-[300px]">
+                <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-6 min-h-[300px] shadow-sm">
                     <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                            <h3 className="text-lg font-bold dark:text-slate-200 text-slate-900 flex items-center gap-2">
                                 <Cpu className="w-5 h-5 text-blue-500" />
                                 CPU Usage (Real-time)
                             </h3>
-                            <p className="text-sm text-slate-500">4 Cores Active</p>
+                            <p className="text-sm dark:text-slate-500 text-slate-600">4 Cores Active</p>
                         </div>
                         <div className="text-right">
-                            <span className="text-3xl font-bold text-white block">{status.cpu_usage}%</span>
-                            <span className="text-xs text-emerald-400 font-medium">-2% vs last hour</span>
+                            <span className="text-3xl font-bold dark:text-white text-slate-900 block">{status.cpu_usage}%</span>
+                            <span className="text-xs text-emerald-500 font-medium">-2% vs last hour</span>
                         </div>
                     </div>
                     <div className="h-48 w-full">
@@ -356,11 +383,11 @@ const ServerMonitorPage = () => {
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                                 <XAxis dataKey="time" hide />
                                 <YAxis hide domain={[0, 100]} />
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                    contentStyle={{ backgroundColor: toolTipBgs, borderColor: toolTipBorder, color: toolTipText }}
                                     itemStyle={{ color: '#3b82f6' }}
                                 />
                                 <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCpu)" isAnimationActive={false} />
@@ -370,30 +397,30 @@ const ServerMonitorPage = () => {
                 </div>
 
                 {/* Network Traffic */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 min-h-[300px]">
+                <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-6 min-h-[300px] shadow-sm">
                      <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                            <h3 className="text-lg font-bold dark:text-slate-200 text-slate-900 flex items-center gap-2">
                                 <Activity className="w-5 h-5 text-cyan-400" />
                                 Network Traffic
                             </h3>
-                            <p className="text-sm text-slate-500">eth0 Interface</p>
+                            <p className="text-sm dark:text-slate-500 text-slate-600">eth0 Interface</p>
                         </div>
                         <div className="flex gap-4 text-xs font-mono">
-                            <div className="text-cyan-400">↓ {status.network.in} Mbps</div>
-                            <div className="text-purple-400">↑ {status.network.out} Mbps</div>
+                            <div className="text-cyan-500">↓ {status.network.in} Mbps</div>
+                            <div className="text-purple-500">↑ {status.network.out} Mbps</div>
                         </div>
                     </div>
                     <div className="h-48 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={history.net}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                                 <XAxis dataKey="time" hide />
                                 <YAxis hide />
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                    contentStyle={{ backgroundColor: toolTipBgs, borderColor: toolTipBorder, color: toolTipText }}
                                 />
-                                <Line type="monotone" dataKey="in" stroke="#22d3ee" strokeWidth={2} dot={false} strokeDasharray="5 5" isAnimationActive={false} />
+                                <Line type="monotone" dataKey="in" stroke="#06b6d4" strokeWidth={2} dot={false} strokeDasharray="5 5" isAnimationActive={false} />
                                 <Line type="monotone" dataKey="out" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
                             </LineChart>
                         </ResponsiveContainer>
@@ -406,15 +433,15 @@ const ServerMonitorPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Active Services List */}
-                <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col">
-                    <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-200">Active Services</h3>
-                        <a href="#" className="text-xs text-blue-400 hover:text-blue-300">View All</a>
+                <div className="lg:col-span-2 dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl flex flex-col shadow-sm">
+                    <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex justify-between items-center">
+                        <h3 className="font-bold dark:text-slate-200 text-slate-900">Active Services</h3>
+                        <a href="#" className="text-xs text-blue-500 hover:text-blue-400">View All</a>
                     </div>
                     <div className="p-2">
                         <table className="w-full text-left text-sm">
                             <thead>
-                                <tr className="text-xs font-bold text-slate-500 uppercase border-b border-slate-800/50">
+                                <tr className="text-xs font-bold text-slate-500 uppercase border-b dark:border-slate-800/50 border-slate-200">
                                     <th className="px-4 py-3">Service Name</th>
                                     <th className="px-4 py-3">Status</th>
                                     <th className="px-4 py-3">PID</th>
@@ -422,28 +449,28 @@ const ServerMonitorPage = () => {
                                     <th className="px-4 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/30">
+                            <tbody className="divide-y dark:divide-slate-800/30 divide-slate-200">
                                 {status.services.map((svc, i) => (
-                                    <tr key={i} className="hover:bg-slate-800/20">
-                                        <td className="px-4 py-3 font-medium text-slate-200 flex items-center gap-2">
+                                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                                        <td className="px-4 py-3 font-medium dark:text-slate-200 text-slate-900 flex items-center gap-2">
                                             <div className={`w-1.5 h-1.5 rounded-full ${svc.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-500'}`}></div>
                                             {svc.name}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
                                                 svc.status === 'Active' 
-                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                                : 'bg-slate-700 text-slate-400 border-slate-600'
+                                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                                                : 'dark:bg-slate-700 bg-slate-200 dark:text-slate-400 text-slate-600 border dark:border-slate-600 border-slate-300'
                                             }`}>
                                                 {svc.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-slate-400">{svc.pid}</td>
-                                        <td className="px-4 py-3 font-mono text-slate-300">{svc.cpu}</td>
+                                        <td className="px-4 py-3 font-mono dark:text-slate-400 text-slate-600">{svc.pid}</td>
+                                        <td className="px-4 py-3 font-mono dark:text-slate-300 text-slate-700">{svc.cpu}</td>
                                         <td className="px-4 py-3 text-right flex justify-end gap-2">
                                             <button 
                                                 onClick={() => handleServiceAction(svc.id, 'restart', svc.name)}
-                                                className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors" 
+                                                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" 
                                                 title="Restart"
                                             >
                                                 <RotateCcw className="w-3.5 h-3.5" />
@@ -452,7 +479,7 @@ const ServerMonitorPage = () => {
                                             {svc.status === 'Active' ? (
                                                 <button 
                                                     onClick={() => handleServiceAction(svc.id, 'stop', svc.name)}
-                                                    className="p-1 hover:bg-rose-500/20 rounded text-slate-400 hover:text-rose-400 transition-colors" 
+                                                    className="p-1 hover:bg-rose-500/20 rounded text-slate-500 dark:text-slate-400 hover:text-rose-500 transition-colors" 
                                                     title="Stop"
                                                 >
                                                     <Power className="w-3.5 h-3.5" />
@@ -460,7 +487,7 @@ const ServerMonitorPage = () => {
                                             ) : (
                                                 <button 
                                                     onClick={() => handleServiceAction(svc.id, 'start', svc.name)}
-                                                    className="p-1 hover:bg-emerald-500/20 rounded text-slate-400 hover:text-emerald-400 transition-colors" 
+                                                    className="p-1 hover:bg-emerald-500/20 rounded text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors" 
                                                     title="Start"
                                                 >
                                                     <Zap className="w-3.5 h-3.5" />
@@ -476,26 +503,24 @@ const ServerMonitorPage = () => {
 
                 {/* Quick Actions Panel */}
                 <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
+                    <h3 className="text-sm font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">Quick Actions</h3>
                     
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group" onClick={handleClearCache}>
-                        <div className="p-3 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
+                    <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors cursor-pointer group shadow-sm" onClick={handleClearCache}>
+                        <div className="p-3 dark:bg-blue-500/10 bg-blue-50 rounded-lg group-hover:bg-blue-500/20 transition-colors">
                             <RefreshCw className="w-5 h-5 text-blue-500" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-slate-200 text-sm">Clear Cache</h4>
+                            <h4 className="font-bold dark:text-slate-200 text-slate-900 text-sm">Clear Cache</h4>
                             <p className="text-xs text-slate-500">Purge WAF cache</p>
                         </div>
                     </div>
 
-
-
-                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-rose-500/50 transition-colors cursor-pointer group" onClick={handleRestart}>
+                     <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:border-rose-500/50 transition-colors cursor-pointer group shadow-sm" onClick={handleRestart}>
                         <div className="p-3 bg-rose-500/10 rounded-lg group-hover:bg-rose-500/20 transition-colors">
                             <Power className="w-5 h-5 text-rose-500" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-slate-200 text-sm">Restart Server</h4>
+                            <h4 className="font-bold dark:text-slate-200 text-slate-900 text-sm">Restart Server</h4>
                             <p className="text-xs text-slate-500">Requires confirmation</p>
                         </div>
                     </div>
@@ -528,15 +553,15 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
     };
 
     return (
-        <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full">
+        <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 p-5 rounded-xl relative overflow-hidden group flex flex-col h-full shadow-sm">
             <div className="flex-1"> {/* Flex-1 to push progress bar down */}
                 <div className="flex justify-between items-start mb-2"> {/* margin-bottom reduced slightly */}
                     <div className="min-w-0 flex-1 mr-2">
                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">{title}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <h3 className="text-xl lg:text-2xl font-bold text-white leading-none whitespace-nowrap">{value}</h3>
+                            <h3 className="text-xl lg:text-2xl font-bold dark:text-white text-slate-900 leading-none whitespace-nowrap">{value}</h3>
                             {subValue && (
-                                <span className={`text-[10px] font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} px-1.5 py-0.5 rounded uppercase tracking-wider`}>
+                                <span className={`text-[10px] font-bold ${subColor === 'amber' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'} px-1.5 py-0.5 rounded uppercase tracking-wider`}>
                                     {subValue}
                                 </span>
                             )}
@@ -545,7 +570,7 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
                             <p className="text-[12px] text-slate-400 mt-2">{description}</p>
                         )}
                     </div>
-                    <div className={`p-2 rounded-lg bg-slate-800 group-hover:bg-slate-700 transition-colors shrink-0`}>
+                    <div className={`p-2 rounded-lg dark:bg-slate-800 bg-slate-100 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors shrink-0`}>
                         <Icon className={`w-5 h-5 ${textColors[color]}`} />
                     </div>
                 </div>
@@ -558,7 +583,7 @@ const MetricCard = ({ title, value, subValue, icon: Icon, color, progress, subCo
                         <span>{progressLabel}</span>
                         <span>{Math.round(progress)}%</span>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 dark:bg-slate-800 bg-slate-200 rounded-full overflow-hidden">
                         <div 
                             className={`h-full rounded-full ${colorClasses[color].split(' ')[1]}`} 
                             style={{ width: `${progress}%` }}

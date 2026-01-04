@@ -29,6 +29,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { getStats } from "../services/api";
+import { useTheme } from '../context/ThemeContext';
 
 // --- Hooks & Components for Animation ---
 
@@ -95,25 +96,25 @@ const AnimatedNumber = ({ value }) => {
 
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, trendUp }) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
+  <div className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 shadow-sm rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
     <div className="flex justify-between items-start mb-2">
-      <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">{title}</span>
-      <div className="p-2 bg-slate-800/50 rounded-lg group-hover:bg-slate-800 transition-colors">
-        <Icon className="w-5 h-5 text-slate-400" />
+      <span className="dark:text-slate-400 text-slate-500 text-xs font-semibold tracking-wider uppercase">{title}</span>
+      <div className="p-2 dark:bg-slate-800/50 bg-slate-100 rounded-lg dark:group-hover:bg-slate-800 group-hover:bg-slate-200 transition-colors">
+        <Icon className="w-5 h-5 dark:text-slate-400 text-slate-500" />
       </div>
     </div>
     <div className="flex items-end gap-3 z-10">
-      <h3 className="text-3xl font-bold text-white tracking-tight">
+      <h3 className="text-3xl font-bold dark:text-white text-slate-900 tracking-tight">
          <AnimatedNumber value={value} />
       </h3>
       {subtext && (
-        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${trendUp ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-400 bg-slate-800'}`}>
+        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${trendUp ? 'text-emerald-500 bg-emerald-500/10' : 'dark:text-slate-400 text-slate-500 dark:bg-slate-800 bg-slate-100'}`}>
           {subtext}
         </span>
       )}
     </div>
     {/* Decorative Background Icon */}
-    <Icon className="absolute -right-4 -bottom-4 w-24 h-24 text-slate-800/30 group-hover:text-slate-800/50 transition-colors z-0" />
+    <Icon className="absolute -right-4 -bottom-4 w-24 h-24 dark:text-slate-800/30 text-slate-100 dark:group-hover:text-slate-800/50 group-hover:text-slate-200 transition-colors z-0" />
   </div>
 );
 
@@ -159,14 +160,14 @@ const ModuleCard = ({ module, timeRange }) => {
   if (module.title.includes("Bot")) { color = 'text-emerald-500'; bgColor = 'bg-emerald-500/10'; lineColor = '#10b981'; }
 
   return (
-    <div className={`relative bg-slate-900/50 border ${isActive ? 'border-slate-800' : 'border-slate-800/60 opacity-70'} rounded-xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all group overflow-hidden`}>
+    <div className={`relative dark:bg-slate-900/50 bg-white border ${isActive ? 'dark:border-slate-800 border-slate-200' : 'dark:border-slate-800/60 border-slate-200/60 opacity-70'} rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all group overflow-hidden`}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${bgColor}`}>
             <IconComponent className={`w-5 h-5 ${color}`} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-100">{module.title}</h4>
+            <h4 className="text-sm font-bold dark:text-slate-100 text-slate-800">{module.title}</h4>
             <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{module.subtitle}</p>
           </div>
         </div>
@@ -176,13 +177,13 @@ const ModuleCard = ({ module, timeRange }) => {
         <div>
              <>
                 <div className="flex items-center gap-2">
-                    <span className={`text-2xl font-bold ${isActive ? color : 'text-slate-500'}`}>
+                    <span className={`text-2xl font-bold ${isActive ? color : 'text-slate-400'}`}>
                         <AnimatedNumber value={module.count} />
                     </span>
                     {isActive ? (
-                         <span className="text-[10px] font-medium text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{getContextLabel()}</span>
+                         <span className="text-[10px] font-medium text-slate-500 dark:bg-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">{getContextLabel()}</span>
                     ) : (
-                         <span className="text-[10px] font-bold text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-700 tracking-wider">OFF</span>
+                         <span className="text-[10px] font-bold text-slate-400 dark:bg-slate-800/50 bg-slate-100 px-1.5 py-0.5 rounded border dark:border-slate-700 border-slate-200 tracking-wider">OFF</span>
                     )}
                 </div>
                 <p className="text-[10px] text-slate-600 mt-1">
@@ -209,7 +210,7 @@ const ModuleCard = ({ module, timeRange }) => {
         )}
       </div>
       
-       {isActive && <div className="absolute bottom-4 right-4 text-[10px] text-slate-600 font-mono">ID: {module.id}</div>}
+       {isActive && <div className="absolute bottom-4 right-4 text-[10px] text-slate-400 font-mono">ID: {module.id}</div>}
     </div>
   );
 };
@@ -220,6 +221,7 @@ const OverviewPage = () => {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('Live');
+    const { theme } = useTheme();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -264,6 +266,13 @@ const OverviewPage = () => {
         );
     }
 
+    // Chart Colors based on theme
+    const chartGridColor = theme === 'dark' ? '#1e293b' : '#cbd5e1'; // slate-800 vs slate-300
+    const chartTickColor = theme === 'dark' ? '#94a3b8' : '#64748b'; // slate-400 vs slate-500
+    const toolTipBgs = theme === 'dark' ? '#0f172a' : '#ffffff';
+    const toolTipBorder = theme === 'dark' ? '#1e293b' : '#e2e8f0';
+    const toolTipText = theme === 'dark' ? '#f8fafc' : '#1e293b';
+
     return (
         <div className={`space-y-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
             
@@ -271,16 +280,16 @@ const OverviewPage = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-2">
                    <Shield className="w-5 h-5 text-blue-500" />
-                   <h2 className="text-xl font-bold text-white tracking-tight">Security Overview</h2>
+                   <h2 className="text-xl font-bold dark:text-white text-slate-900 tracking-tight">Security Overview</h2>
                 </div>
                 
                 <div className="flex items-center gap-3">
-                    <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    <div className="flex dark:bg-slate-900 bg-white p-1 rounded-lg border dark:border-slate-800 border-slate-200">
                         {['Live', '1H', '24H', '7D'].map((t) => (
                             <button 
                                 key={t} 
                                 onClick={() => setTimeRange(t)}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${timeRange === t ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${timeRange === t ? 'dark:bg-slate-800 bg-slate-100 dark:text-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 {t}
                             </button>
@@ -329,12 +338,12 @@ const OverviewPage = () => {
             <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-3">
                     <div className="h-5 w-1 bg-rose-500 rounded-full" />
-                    <h3 className="text-lg font-bold text-white">Active Protection Modules</h3>
+                    <h3 className="text-lg font-bold dark:text-white text-slate-900">Active Protection Modules</h3>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 tracking-wide">
                         {stats.system_status}
                     </span>
                 </div>
-                <Button variant="ghost" className="text-xs text-blue-400 hover:text-blue-300 p-0 h-auto font-normal">
+                <Button variant="ghost" className="text-xs text-blue-500 hover:text-blue-400 hover:bg-transparent p-0 h-auto font-normal cursor-pointer transition-colors">
                     Configure Rules <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
             </div>
@@ -347,20 +356,20 @@ const OverviewPage = () => {
             </div>
 
             {/* Traffic Chart */}
-            <Card className="bg-slate-900/50 border-slate-800 p-6">
+            <Card className="dark:bg-slate-900/50 bg-white dark:border-slate-800 border-slate-200 shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h3 className="text-lg font-bold text-white">Real-Time Traffic Analysis</h3>
+                        <h3 className="text-lg font-bold dark:text-white text-slate-900">Real-Time Traffic Analysis</h3>
                         <p className="text-sm text-slate-500">Hourly Requests (24h) • Inbound Traffic</p>
                     </div>
                     <div className="flex items-center gap-4 text-xs font-medium">
                         <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-blue-500" />
-                            <span className="text-slate-300">Valid Traffic</span>
+                            <span className="dark:text-slate-300 text-slate-600">Valid Traffic</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            <span className="text-slate-300">Blocked Attacks</span>
+                            <span className="dark:text-slate-300 text-slate-600">Blocked Attacks</span>
                         </div>
                     </div>
                 </div>
@@ -378,24 +387,24 @@ const OverviewPage = () => {
                                     <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                             <XAxis 
                                 dataKey="time" 
-                                stroke="#475569" 
-                                tick={{fill: '#64748b', fontSize: 12}} 
+                                stroke={chartTickColor} 
+                                tick={{fill: chartTickColor, fontSize: 12}} 
                                 tickLine={false}
                                 axisLine={false}
                             />
                             <YAxis 
-                                stroke="#475569" 
-                                tick={{fill: '#64748b', fontSize: 12}} 
+                                stroke={chartTickColor} 
+                                tick={{fill: chartTickColor, fontSize: 12}} 
                                 tickLine={false}
                                 axisLine={false}
                             />
                             <Tooltip 
-                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                contentStyle={{ backgroundColor: toolTipBgs, borderColor: toolTipBorder, color: toolTipText }}
                                 itemStyle={{ fontSize: '12px' }}
-                                labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                                labelStyle={{ color: chartTickColor, marginBottom: '4px' }}
                             />
                             {/* Animated Areas */}
                             <Area 
