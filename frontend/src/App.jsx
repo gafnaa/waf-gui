@@ -38,16 +38,16 @@ const DashboardLayout = () => {
     const location = useLocation();
 
     return (
-        <div className="min-h-screen dark:bg-[#050A18] bg-slate-50 dark:text-slate-200 text-slate-900 font-sans flex overflow-hidden transition-colors duration-300">
+        <div className="min-h-screen dark:bg-[#050A18] bg-slate-50 dark:text-slate-200 text-slate-900 font-sans flex overflow-hidden transition-colors duration-300 animate-in fade-in duration-700">
             {/* Sidebar */}
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto">
+            <main className="flex-1 ml-64 p-8 h-screen overflow-y-auto scroll-smooth">
                 <div className="max-w-7xl mx-auto">
                     <div 
                         key={location.pathname}
-                        className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out"
+                        className="animate-in fade-in slide-in-from-bottom-5 duration-500 ease-out"
                     >
                         <Outlet />
                     </div>

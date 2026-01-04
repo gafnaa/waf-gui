@@ -50,7 +50,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050A18] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#050A18] to-[#000000] flex items-center justify-center p-4 relative overflow-hidden text-slate-200">
+    <div className="min-h-screen w-full bg-[#050A18] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#050A18] to-[#000000] flex items-center justify-center p-4 relative overflow-hidden text-slate-200 animate-in fade-in duration-700">
       
       {/* Background Decoration */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none" />
