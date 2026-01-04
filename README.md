@@ -1,87 +1,118 @@
-# Nginx Sentinel API (WAF GUI)
+# Gafnaa WAF Dashboard 🛡️
 
-A Web Application Firewall (WAF) GUI and API management system built with Python (FastAPI) to monitor and control Nginx security rules.
+**Gafnaa WAF** is a modern, high-performance Web Application Firewall (WAF) management GUI designed for Nginx with ModSecurity. It provides a real-time, professional interface for security engineers to monitor traffic, analyze attacks, and manage security rules with precision.
 
-## Features
+![Dashboard Preview](https://via.placeholder.com/1200x600?text=Gafnaa+WAF+Dashboard+Preview)
 
-- **Real-time Statistics**: Analyze logs for threat detection.
-- **Rule Management**: Add/Remove WAF rules (e.g., blocking IPs).
-- **System Control**: Restart Nginx server via API.
-- **Health Monitoring**: Check system status.
+## ✨ Key Features
 
-## Tech Stack
+### 📊 Real-time Monitoring
 
-- **Backend**: Python 3.x, FastAPI, Uvicorn
-- **Frontend**: Node.js (In development)
-- **Database/Storage**: (To be defined/implied from usage)
+- **Live Traffic Analysis**: Visualize request trends, attack spikes, and system load in real-time.
+- **Server Health**: Monitor CPU, RAM usage, and Nginx service status (Active/Reload/Restart).
+- **Attack Insights**: Categorized breakdown of threats (SQL Injection, XSS, RCE, LFI, etc.).
 
-## Prerequisites
+### 📝 Advanced Logs Explorer
 
-- Python 3.8+
-- Node.js & npm (for frontend)
-- Nginx (for system integration)
+- **Live Tail**: Watch log events stream in real-time (CLI-style experience).
+- **Smart Filtering**: Filter logs by Time Range (Last Hour, 3d, 7d), Attack Type, Status Code, or IP.
+- **Detailed Inspection**: View full request details, including headers and payloads.
+- **Export Capabilities**: Download filtered log datasets as CSV for external analysis.
 
-## Installation & Running
+### 🛠️ Rules Engine & Configuration
 
-### Backend
+- **Core Rule Set (CRS) Control**: Easily toggle OWASP Core Rules categories.
+- **Custom Rules Editor**: Integrated IDE-like editor for `custom_rules.conf` with:
+  - Syntax-aware interface.
+  - Line numbers and scrolling synchronization.
+  - Dark mode aesthetic optimized for long coding sessions.
+- **IP Access Control**: One-click blocking or allowing of specific IP addresses.
 
-1.  Navigate to the backend directory:
+## 🚀 Tech Stack
 
-    ```bash
-    cd backend
-    ```
+**Frontend**
 
-2.  Create a virtual environment (optional but recommended):
+- **Framework**: React 18 (Vite)
+- **Styling**: Tailwind CSS (Dark Mode optimized)
+- **Icons**: Lucide React
+- **Charts**: Recharts
+- **State/Routing**: React Router DOM, Axios
 
-    ```bash
-    python -m venv venv
-    # Windows
-    venv\Scripts\activate
-    # Linux/Mac
-    source venv/bin/activate
-    ```
+**Backend**
 
-3.  Install dependencies:
+- **Core**: Python 3.10+ (FastAPI)
+- **Server**: Uvicorn (ASGI)
+- **System Utils**: Psutil (System monitoring), Subprocess (Nginx control)
+- **Validation**: Pydantic
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+## 🛠️ Installation & Setup
 
-4.  Run the application:
-    ```bash
-    python app/main.py
-    ```
-    The API will be available at `http://localhost:8000`.
-    Swagger documentation: `http://localhost:8000/docs`.
+### Prerequisites
 
-### Frontend
+- Python 3.9+
+- Node.js 16+ & npm
+- Nginx (with ModSecurity enabled)
 
-1.  Navigate to the frontend directory:
+### 1. Backend Setup
 
-    ```bash
-    cd frontend
-    ```
+```bash
+cd backend
 
-2.  Install dependencies:
+# Create virtual environment
+python -m venv venv
+# Activate (Windows)
+venv\Scripts\activate
+# Activate (Linux/Mac)
+source venv/bin/activate
 
-    ```bash
-    npm install
-    ```
+# Install dependencies
+pip install -r requirements.txt
 
-3.  Run the frontend (Check `package.json` for specific scripts, currently in initial setup):
-    ```bash
-    npm start
-    # or
-    npm run dev
-    ```
+# Configure Environment
+# Create a .env file based on the example below
+```
 
-## API Endpoints
+**Environment Variables (`backend/.env`)**:
 
-- `GET /api/health`: Check system status.
-- `GET /api/stats`: Get log analysis statistics.
-- `POST /api/waf/rule`: Add a new WAF rule (Block IP).
-- `POST /api/system/restart`: Restart Nginx service.
+```env
+ACCESS_LOG_PATH="./dummy_access.log"  # Path to Nginx access.log
+WAF_CONFIG_PATH="./dummy_waf.conf"    # Path to custom_rules.conf
+ALLOWED_ORIGINS=["http://localhost:5173"]
+SECRET_KEY="your_secret_key"
+```
 
-## Security Note
+**Run Backend**:
 
-Ensure this application is secured or run within a private network, as it has administrative privileges to restart services and modify firewall rules.
+```bash
+python app/main.py
+# API running at http://localhost:8000
+# Docs at http://localhost:8000/docs
+```
+
+### 2. Frontend Setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run Development Server
+npm run dev
+```
+
+Access the dashboard at `http://localhost:5173`.
+
+## 📸 Screenshots
+
+- **Overview Dashboard**: General stats and traffic charts.
+- **Live Logs**: Real-time table with "Live Tail" mode active.
+- **Rules Editor**: VSCode-like editor for ModSecurity rules.
+
+## 🔒 Security Note
+
+This dashboard possesses administrative capabilities (restarting services, editing WAF rules). **Do not expose this application to the public internet** without proper authentication (already implemented via Login flow) and network restrictions (VPN/IP Whitelist).
+
+---
+
+Built with ❤️ by the Gafnaa Team.
