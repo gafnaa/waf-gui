@@ -60,7 +60,8 @@ const SettingsPage = () => {
             if (section === 'Profile') {
                 await updateUserProfile(profile.name);
                 showFeedback('success', 'Profile updated successfully.');
-                // Update local storage or context if needed, but page refresh handles it via API
+                // Notify Sidebar
+                window.dispatchEvent(new Event('user-profile-updated'));
             } else if (section === 'Security') {
                 if (!security.currentPass || !security.newPass) {
                     showFeedback('error', 'Please fill in all password fields.');
