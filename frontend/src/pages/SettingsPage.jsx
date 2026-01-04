@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     User, 
     Lock, 
@@ -8,12 +8,14 @@ import {
     Save,
     Trash2,
     Eye,
-    EyeOff
+    EyeOff,
+    CheckCircle2,
+    XCircle
 } from 'lucide-react';
+import { getUserProfile, updateUserProfile, changePassword } from '../services/api';
 
 const SettingsPage = () => {
-    // State Mockup
-    const [profile, setProfile] = useState({ name: "Alexander P.", username: "admin" });
+    const [profile, setProfile] = useState({ name: "", username: "" });
     const [security, setSecurity] = useState({ currentPass: "", newPass: "" });
     const [notifications, setNotifications] = useState({ 
         telegramEnabled: true, 
@@ -23,27 +25,78 @@ const SettingsPage = () => {
     });
     
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [msg, setMsg] = useState(null);
+
+    // Initial Fetch
+    useEffect(() => {
+        const fetchUser = async () => {
+             try {
+                 const res = await getUserProfile();
+                 setProfile({ 
+                     name: res.data.full_name || "", 
+                     username: res.data.username 
+                 });
+             } catch (err) {
+                 console.error("Failed to load profile", err);
+             }
+        };
+        fetchUser();
+    }, []);
 
     const handleProfileChange = (e) => setProfile({...profile, [e.target.name]: e.target.value});
     const handleSecurityChange = (e) => setSecurity({...security, [e.target.name]: e.target.value});
     const handleNotifToggle = (key) => setNotifications({...notifications, [key]: !notifications[key]});
     const handleNotifChange = (e) => setNotifications({...notifications, [e.target.name]: e.target.value});
 
-    const handleSave = (section) => {
-        // Mock API Call
-        alert(`Creating simulation: Saving ${section} settings...`);
+    const showFeedback = (type, text) => {
+        setMsg({ type, text });
+        setTimeout(() => setMsg(null), 3000);
+    };
+
+    const handleSave = async (section) => {
+        setLoading(true);
+        try {
+            if (section === 'Profile') {
+                await updateUserProfile(profile.name);
+                showFeedback('success', 'Profile updated successfully.');
+                // Update local storage or context if needed, but page refresh handles it via API
+            } else if (section === 'Security') {
+                if (!security.currentPass || !security.newPass) {
+                    showFeedback('error', 'Please fill in all password fields.');
+                    setLoading(false);
+                    return;
+                }
+                await changePassword(security.currentPass, security.newPass);
+                showFeedback('success', 'Password changed successfully.');
+                setSecurity({ currentPass: "", newPass: "" });
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.detail || "Action failed.";
+            showFeedback('error', errorMsg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
-            <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Settings</h2>
-                <div className="flex items-center gap-2 mt-1 text-slate-500 text-sm">
-                    <span className="bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">Rocky Linux Server #01</span>
-                    <span>•</span>
-                    <span>Configuration</span>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Settings</h2>
+                    <div className="flex items-center gap-2 mt-1 text-slate-500 text-sm">
+                        <span className="bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">Rocky Linux Server #01</span>
+                        <span>•</span>
+                        <span>Configuration</span>
+                    </div>
                 </div>
+                {msg && (
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                        {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                        {msg.text}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

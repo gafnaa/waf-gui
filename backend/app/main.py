@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth, WafLogListResponse
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth, WafLogListResponse, ProfileUpdateRequest, PasswordChangeRequest, UserResponse
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -27,12 +27,25 @@ def health_check():
 
 @app.post("/api/login")
 def login(login_data: LoginRequest):
-    user = auth_service.FAKE_USERS_DB.get(login_data.username)
+    user = auth_service.users_db.get(login_data.username)
     if not user or not auth_service.verify_password(login_data.password, user['hashed_password']):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
     access_token = auth_service.create_access_token(data={"sub": user['username']})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user": {"username": user['username'], "full_name": user.get("full_name", "User")}}
+
+@app.get("/api/user", response_model=UserResponse)
+def get_user_info(user = Depends(auth_service.get_current_user)):
+    return user
+
+@app.put("/api/user/profile", response_model=UserResponse)
+def update_profile(req: ProfileUpdateRequest, user = Depends(auth_service.get_current_user)):
+    return auth_service.update_profile(user['username'], req.full_name)
+
+@app.put("/api/user/password", response_model=CommandResponse)
+def update_password(req: PasswordChangeRequest, user = Depends(auth_service.get_current_user)):
+    success = auth_service.change_password(user['username'], req.current_password, req.new_password)
+    return CommandResponse(status="success", message="Password updated successfully")
 
 # --- Protected Endpoints ---
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, IPvAnyAddress
+from pydantic import BaseModel
 from typing import List, Optional
 
 # --- Sub-models untuk Dashboard ---
@@ -107,3 +107,15 @@ class WafLogListResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+
+# User Management Schemas
+class ProfileUpdateRequest(BaseModel):
+    full_name: str
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class UserResponse(BaseModel):
+    username: str
+    full_name: Optional[str] = None
