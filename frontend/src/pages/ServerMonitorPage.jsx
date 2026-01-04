@@ -186,31 +186,45 @@ const ServerMonitorPage = () => {
             {/* Restart Confirmation Modal */}
             {showRestartModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 border-l-4 border-l-rose-500">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-rose-500/10 rounded-full shrink-0">
-                                <AlertTriangle className="w-6 h-6 text-rose-500" />
+                    <div className="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 ring-1 dark:ring-white/5 ring-black/5">
+                        
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="p-4 bg-rose-100 dark:bg-rose-500/10 rounded-full">
+                                <Power className="w-8 h-8 text-rose-600 dark:text-rose-500" />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-lg font-bold dark:text-slate-100 text-slate-900">Restart Server?</h3>
-                                <p className="text-sm dark:text-slate-400 text-slate-600 leading-relaxed">
-                                    Are you sure you want to restart the Nginx server? This will <strong className="text-rose-500">interrupt traffic</strong> for a few seconds while the service reloads.
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold dark:text-white text-slate-900">System Restart</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[90%] mx-auto">
+                                    Are you sure you want to restart the Nginx server?
                                 </p>
                             </div>
+
+                            <div className="w-full bg-rose-50 dark:bg-rose-500/5 border border-rose-200 dark:border-rose-500/10 rounded-lg p-3 text-left">
+                                <div className="flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-500 shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Downtime Warning</p>
+                                        <p className="text-xs text-rose-800/80 dark:text-rose-200/70 leading-relaxed">
+                                            Traffic will be interrupted for a few seconds while the service reloads. Active connections may be dropped.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex gap-3 justify-end mt-4 pt-2">
+
+                        <div className="grid grid-cols-2 gap-3 mt-8">
                             <button 
                                 onClick={() => setShowRestartModal(false)}
-                                className="px-4 py-2 rounded-lg dark:text-slate-300 text-slate-600 hover:text-slate-900 dark:hover:text-white dark:hover:bg-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
+                                className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-200 dark:text-slate-300 text-slate-700 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={confirmRestart}
-                                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-900/20 transition-all text-sm font-bold flex items-center gap-2"
+                                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-lg shadow-rose-900/20 transition-all active:scale-[0.98]"
                             >
-                                <Power className="w-4 h-4" />
-                                Restart Server
+                                Restart Now
                             </button>
                         </div>
                     </div>
