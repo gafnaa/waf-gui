@@ -165,7 +165,7 @@ const SettingsPage = () => {
                                         value={security.currentPass}
                                         onChange={handleSecurityChange}
                                         placeholder="Current password"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600 [color-scheme:dark] [&:-webkit-autofill]:shadow-[0_0_0_1000px_#020617_inset] [&:-webkit-autofill]:text-slate-200"
                                     />
                                 </div>
                             </div>
