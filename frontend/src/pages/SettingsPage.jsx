@@ -162,10 +162,11 @@ const SettingsPage = () => {
                                     <input 
                                         type={showPassword ? "text" : "password"}
                                         name="currentPass"
-                                        value={security.currentPass}
+                                        value="********"
                                         onChange={handleSecurityChange}
                                         placeholder="Current password"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600 [color-scheme:dark] [&:-webkit-autofill]:shadow-[0_0_0_1000px_#020617_inset] [&:-webkit-autofill]:text-slate-200"
+                                        disabled
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-500 cursor-not-allowed focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600 [color-scheme:dark]"
                                     />
                                 </div>
                             </div>
@@ -280,7 +281,7 @@ const SettingsPage = () => {
                                 checked={notifications.dailyReports}
                                 onChange={() => handleNotifToggle('dailyReports')}
                             />
-                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-600"></div>
+                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
                 </div>
