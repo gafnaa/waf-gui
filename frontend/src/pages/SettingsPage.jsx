@@ -46,104 +46,106 @@ const SettingsPage = () => {
                 </div>
             </div>
 
-            {/* Profile Section */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                        <User className="w-5 h-5" />
-                    </div>
-                    <h3 className="font-bold text-slate-200">Account Profile</h3>
-                </div>
-                <div className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
-                            <input 
-                                type="text" 
-                                name="name"
-                                value={profile.name} 
-                                onChange={handleProfileChange}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
-                            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Profile Section */}
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
+                    <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <User className="w-5 h-5" />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Username</label>
-                            <input 
-                                type="text" 
-                                name="username"
-                                value={profile.username} 
-                                onChange={handleProfileChange}
-                                disabled
-                                className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
-                            />
-                            <p className="text-[10px] text-slate-600">Username cannot be changed directly.</p>
+                        <h3 className="font-bold text-slate-200">Account Profile</h3>
+                    </div>
+                    <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    name="name"
+                                    value={profile.name} 
+                                    onChange={handleProfileChange}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Username</label>
+                                <input 
+                                    type="text" 
+                                    name="username"
+                                    value={profile.username} 
+                                    onChange={handleProfileChange}
+                                    disabled
+                                    className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
+                                />
+                                <p className="text-[10px] text-slate-600">Username cannot be changed directly.</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end pt-4">
+                            <button 
+                                onClick={() => handleSave('Profile')}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                            >
+                                <Save className="w-4 h-4" />
+                                Save Profile
+                            </button>
                         </div>
                     </div>
-                    <div className="flex justify-end">
-                        <button 
-                            onClick={() => handleSave('Profile')}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
-                        >
-                            <Save className="w-4 h-4" />
-                            Save Profile
-                        </button>
-                    </div>
                 </div>
-            </div>
 
-            {/* Security Section */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
-                    <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
-                        <Lock className="w-5 h-5" />
+                {/* Security Section */}
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
+                    <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-3">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                            <Lock className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-bold text-slate-200">Security</h3>
                     </div>
-                    <h3 className="font-bold text-slate-200">Security</h3>
-                </div>
-                <div className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                                <input 
-                                    type={showPassword ? "text" : "password"}
-                                    name="currentPass"
-                                    value={security.currentPass}
-                                    onChange={handleSecurityChange}
-                                    placeholder="Enter current password"
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
-                                />
+                    <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                    <input 
+                                        type={showPassword ? "text" : "password"}
+                                        name="currentPass"
+                                        value={security.currentPass}
+                                        onChange={handleSecurityChange}
+                                        placeholder="Current password"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                    <input 
+                                        type={showPassword ? "text" : "password"}
+                                        name="newPass"
+                                        value={security.newPass}
+                                        onChange={handleSecurityChange}
+                                        placeholder="New strong password"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+                                    />
+                                    <button 
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-3 text-slate-500 hover:text-slate-400"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                                <input 
-                                    type={showPassword ? "text" : "password"}
-                                    name="newPass"
-                                    value={security.newPass}
-                                    onChange={handleSecurityChange}
-                                    placeholder="Enter strong password"
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
-                                />
-                                <button 
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-400"
-                                >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
+                        <div className="flex justify-end pt-4">
+                            <button 
+                                onClick={() => handleSave('Security')}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                            >
+                                <Save className="w-4 h-4" />
+                                Update Password
+                            </button>
                         </div>
-                    </div>
-                    <div className="flex justify-end">
-                        <button 
-                            onClick={() => handleSave('Security')}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
-                        >
-                            <Save className="w-4 h-4" />
-                            Update Password
-                        </button>
                     </div>
                 </div>
             </div>
