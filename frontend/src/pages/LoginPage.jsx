@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, User, Key, Eye, EyeOff, Circle } from 'lucide-react';
+import { Shield, Lock, User, Key, Eye, EyeOff, Circle, Sun, Moon } from 'lucide-react';
 import { loginUser } from '../services/api';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { useTheme } from '../context/ThemeContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -50,34 +53,43 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050A18] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#050A18] to-[#000000] flex items-center justify-center p-4 relative overflow-hidden text-slate-200 animate-in fade-in duration-700">
+    <div className="min-h-screen w-full dark:bg-[#050A18] bg-[#f8fafc] dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] dark:from-[#0f172a] dark:via-[#050A18] dark:to-[#000000] flex items-center justify-center p-4 relative overflow-hidden dark:text-slate-200 text-slate-900 animate-in fade-in duration-700 transition-colors">
       
       {/* Background Decoration */}
-      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] dark:bg-blue-900/10 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none transition-colors" />
+
+      {/* Theme Toggle (Absolute) */}
+      <button 
+        onClick={toggleTheme}
+        className="absolute top-6 right-6 p-2 rounded-full dark:bg-slate-800/50 bg-white shadow-sm border dark:border-slate-700 border-slate-200 hover:scale-105 active:scale-95 transition-all z-50 text-slate-500 hover:text-blue-500"
+        title="Toggle Theme"
+      >
+        {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-400" /> : <Sun className="w-5 h-5 text-amber-500" />}
+      </button>
 
       {/* Main Container */}
       <div className="w-full max-w-[420px] mx-auto z-10 flex flex-col items-center">
         
         {/* Header Section */}
         <div className="flex flex-col items-center mb-8 space-y-3 text-center">
-          <div className="p-3 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl mb-2">
-            <Shield className="w-8 h-8 text-white fill-current" />
+          <div className="p-3 dark:bg-slate-900 bg-white rounded-2xl border dark:border-slate-800 border-slate-200 shadow-xl mb-2">
+            <Shield className="w-8 h-8 dark:text-white text-blue-600 fill-current" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-white tracking-tight">WAF Admin Console</h1>
-            <p className="text-slate-400 text-xs font-medium tracking-wide">
+            <h1 className="text-2xl font-bold dark:text-white text-slate-900 tracking-tight">WAF Admin Console</h1>
+            <p className="dark:text-slate-400 text-slate-500 text-xs font-medium tracking-wide">
               Secure Access <span className="mx-1 text-slate-600">|</span> Nginx + ModSecurity
             </p>
           </div>
         </div>
 
         {/* Login Card */}
-        <div className="w-full bg-[#0B1120]/80 backdrop-blur-md border border-slate-800/60 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/50 ring-1 ring-white/5">
+        <div className="w-full dark:bg-[#0B1120]/80 bg-white/80 backdrop-blur-md border dark:border-slate-800/60 border-slate-200 rounded-2xl p-6 sm:p-8 shadow-2xl dark:shadow-black/50 shadow-slate-200/50 ring-1 dark:ring-white/5 ring-slate-200">
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm px-4 py-3 rounded-lg flex items-center gap-2">
                 <Circle className="w-4 h-4 fill-red-500/20" />
                 {error}
               </div>
@@ -86,7 +98,7 @@ const LoginPage = () => {
             <div className="space-y-5">
               {/* Username Field */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300 ml-1 uppercase tracking-wider">
+                <label className="text-xs font-semibold dark:text-slate-300 text-slate-600 ml-1 uppercase tracking-wider">
                   Username
                 </label>
                 <div className="relative group">
@@ -100,7 +112,7 @@ const LoginPage = () => {
                     onChange={handleChange}
                     placeholder="admin"
                     required
-                    className="pl-10 h-11 bg-[#151b2b] border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition-all rounded-xl"
+                    className="pl-10 h-11 dark:bg-[#151b2b] bg-slate-50/50 border dark:border-slate-800 border-slate-200 dark:text-slate-200 text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-600 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition-all rounded-xl shadow-inner"
                   />
                 </div>
               </div>
@@ -108,7 +120,7 @@ const LoginPage = () => {
               {/* Password Field */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  <label className="text-xs font-semibold dark:text-slate-300 text-slate-600 uppercase tracking-wider">
                     Password
                   </label>
                 </div>
@@ -123,12 +135,12 @@ const LoginPage = () => {
                     onChange={handleChange}
                     placeholder="••••••••"
                     required
-                    className="pl-10 pr-10 h-11 bg-[#151b2b] border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition-all rounded-xl"
+                    className="pl-10 pr-10 h-11 dark:bg-[#151b2b] bg-slate-50/50 border dark:border-slate-800 border-slate-200 dark:text-slate-200 text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-600 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition-all rounded-xl shadow-inner"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 dark:hover:text-slate-300 hover:text-slate-700 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -150,9 +162,9 @@ const LoginPage = () => {
 
             {/* System Status */}
             <div className="pt-2 flex justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-full border border-slate-800/50">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 dark:bg-black/40 bg-slate-100 rounded-full border dark:border-slate-800/50 border-slate-200">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-                <span className="text-[10px] font-bold text-slate-500 tracking-widest">
+                <span className="text-[10px] font-bold dark:text-slate-500 text-slate-600 tracking-widest">
                   SYSTEM STATUS: OPERATIONAL
                 </span>
               </div>
@@ -163,10 +175,10 @@ const LoginPage = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center space-y-2">
-          <p className="text-slate-600 text-[10px] uppercase tracking-widest">
+          <p className="dark:text-slate-600 text-slate-500 text-[10px] uppercase tracking-widest">
              © 2026 WAF Shield by gafnaa
           </p>
-          <p className="text-slate-700 text-[10px] font-mono">
+          <p className="dark:text-slate-700 text-slate-400 text-[10px] font-mono">
             v3.1.0-stable
           </p>
         </div>
