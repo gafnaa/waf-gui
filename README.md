@@ -1,4 +1,4 @@
-# Gafnaa WAF Dashboard 🛡️
+# Sankya WAF Dashboard 🛡️
 
 **Gafnaa WAF** is a modern, high-performance Web Application Firewall (WAF) management GUI designed for Nginx with ModSecurity. It provides a real-time, professional interface for security engineers to monitor traffic, analyze attacks, and manage security rules with precision.
 
@@ -115,4 +115,4 @@ This dashboard possesses administrative capabilities (restarting services, editi
 
 ---
 
-Built with ❤️ by the Gafnaa Team.
+Built with ❤️ by Sankya
