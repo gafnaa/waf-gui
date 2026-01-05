@@ -11,11 +11,13 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileWarning,
-  Link
+  Link,
+  Settings,
+  X
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { getRules, toggleRule, getCustomRules, saveCustomRules } from "../services/api";
+import { getRules, toggleRule, saveCustomRules, getCustomRules, getHotlinkConfig, saveHotlinkConfig } from "../services/api";
 
 const RulesPage = () => {
     const [activeTab, setActiveTab] = useState('core'); // 'core' or 'custom'
@@ -26,6 +28,52 @@ const RulesPage = () => {
     
     // Refs
     const lineNumbersRef = useRef(null);
+
+    // Hotlink Logic
+    const [showHotlinkModal, setShowHotlinkModal] = useState(false);
+    const [hotlinkConfig, setHotlinkConfig] = useState({ extensions: [], domains: [] });
+    const [newDomain, setNewDomain] = useState('');
+
+    const handleOpenHotlink = async () => {
+        setShowHotlinkModal(true);
+        try {
+            const cfg = await getHotlinkConfig();
+            setHotlinkConfig(cfg);
+        } catch (e) {
+            console.error("Failed to load hotlink config", e);
+        }
+    };
+
+    const handleSaveHotlink = async () => {
+        try {
+            await saveHotlinkConfig(hotlinkConfig);
+            setShowHotlinkModal(false);
+            setStatusMsg({ type: 'success', text: 'Hotlink configuration saved!' });
+            setTimeout(() => setStatusMsg(null), 3000);
+        } catch (e) {
+            console.error(e);
+            setStatusMsg({ type: 'error', text: 'Failed to save hotlink config' });
+        }
+    };
+
+    const toggleExtension = (ext) => {
+        const current = hotlinkConfig.extensions || [];
+        if (current.includes(ext)) {
+            setHotlinkConfig({ ...hotlinkConfig, extensions: current.filter(e => e !== ext) });
+        } else {
+            setHotlinkConfig({ ...hotlinkConfig, extensions: [...current, ext] });
+        }
+    };
+
+    const addDomain = () => {
+        if (!newDomain) return;
+        setHotlinkConfig({ ...hotlinkConfig, domains: [...(hotlinkConfig.domains || []), newDomain] });
+        setNewDomain('');
+    };
+
+    const removeDomain = (domain) => {
+        setHotlinkConfig({ ...hotlinkConfig, domains: (hotlinkConfig.domains || []).filter(d => d !== domain) });
+    };
 
     // Initial Fetch
     useEffect(() => {
@@ -174,15 +222,28 @@ const RulesPage = () => {
                                         </div>
                                     </div>
                                     
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only peer" 
-                                            checked={rule.enabled}
-                                            onChange={() => handleToggle(rule.id, rule.enabled)}
-                                        />
-                                        <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-800 rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
-                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        {rule.id === 'HOTLINK-09' && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={handleOpenHotlink}
+                                                className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10"
+                                                title="Configure Hotlink Settings"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only peer" 
+                                                checked={rule.enabled}
+                                                onChange={() => handleToggle(rule.id, rule.enabled)}
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-800 rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -266,6 +327,80 @@ const RulesPage = () => {
                     </div>
                 )}
             </div>
+
+            {/* Hotlink Configuration Modal */}
+            {showHotlinkModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b dark:border-slate-800">
+                            <h3 className="font-bold text-lg flex items-center gap-2 dark:text-white text-slate-900">
+                                <Link className="w-5 h-5 text-pink-500" />
+                                Hotlink Protection Settings
+                            </h3>
+                            <button onClick={() => setShowHotlinkModal(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 space-y-6">
+                            {/* Protected Extensions */}
+                            <div>
+                                <label className="block text-sm font-medium mb-3 dark:text-slate-300 text-slate-700">Protected Extensions</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'svg', 'bmp'].map(ext => (
+                                        <button
+                                            key={ext}
+                                            onClick={() => toggleExtension(ext)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                                                (hotlinkConfig.extensions || []).includes(ext)
+                                                    ? 'bg-pink-500 text-white border-pink-600'
+                                                    : 'dark:bg-slate-800 bg-slate-100 dark:text-slate-400 text-slate-600 dark:border-slate-700 border-slate-200 hover:border-pink-500/50'
+                                            }`}
+                                        >
+                                            .{ext}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Whitelisted Domains */}
+                            <div>
+                                <label className="block text-sm font-medium mb-3 dark:text-slate-300 text-slate-700">Allowed Domains (Whitelist)</label>
+                                <div className="flex gap-2 mb-3">
+                                    <input 
+                                        type="text" 
+                                        value={newDomain}
+                                        onChange={(e) => setNewDomain(e.target.value)}
+                                        placeholder="e.g. partner.com"
+                                        className="flex-1 bg-transparent border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none dark:text-white text-slate-900"
+                                        onKeyDown={(e) => e.key === 'Enter' && addDomain()}
+                                    />
+                                    <Button onClick={addDomain} size="sm" className="bg-slate-800 hover:bg-slate-700 text-white">Add</Button>
+                                </div>
+                                <div className="dark:bg-slate-950 bg-slate-50 rounded-lg p-3 border dark:border-slate-800 border-slate-200 min-h-[100px] max-h-[150px] overflow-y-auto">
+                                    {(hotlinkConfig.domains || []).length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic text-center py-2">No domains whitelisted. Only empty referers blocked.</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {(hotlinkConfig.domains || []).map(domain => (
+                                                <div key={domain} className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 text-xs dark:text-slate-300 text-slate-700">
+                                                    {domain}
+                                                    <button onClick={() => removeDomain(domain)} className="hover:text-rose-500"><X className="w-3 h-3" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 flex justify-end gap-3">
+                            <Button variant="ghost" onClick={() => setShowHotlinkModal(false)}>Cancel</Button>
+                            <Button onClick={handleSaveHotlink} className="bg-pink-600 hover:bg-pink-500 text-white">Save Changes</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

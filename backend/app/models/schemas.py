@@ -106,7 +106,10 @@ class WafLogListResponse(BaseModel):
     total: int
     page: int
     limit: int
-    total_pages: int
+
+class HotlinkConfig(BaseModel):
+    extensions: List[str]
+    domains: List[str]
 
 # User Management Schemas
 class ProfileUpdateRequest(BaseModel):

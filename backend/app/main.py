@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth, WafLogListResponse, ProfileUpdateRequest, PasswordChangeRequest, UserResponse
+from app.models.schemas import StatsResponse, WafRuleRequest, CommandResponse, WafRuleStatus, RuleToggleRequest, LoginRequest, CustomRuleRequest, IpRule, ActiveIp, SystemHealth, WafLogListResponse, ProfileUpdateRequest, PasswordChangeRequest, UserResponse, HotlinkConfig
 from app.services import log_service, system_service, auth_service
 from app.core.config import get_settings
 
@@ -112,6 +112,14 @@ def clear_cache(user = Depends(auth_service.get_current_user)):
 @app.post("/api/system/services/{service_name}/{action}", response_model=CommandResponse)
 def manage_service_endpoint(service_name: str, action: str, user = Depends(auth_service.get_current_user)):
     return system_service.manage_service(service_name, action)
+
+@app.get("/api/waf/hotlink", response_model=HotlinkConfig)
+def get_hotlink_config(user = Depends(auth_service.get_current_user)):
+    return system_service.get_hotlink_config()
+
+@app.post("/api/waf/hotlink", response_model=CommandResponse)
+def save_hotlink_config(config: HotlinkConfig, user = Depends(auth_service.get_current_user)):
+    return system_service.save_hotlink_config(config.dict())
 
 if __name__ == "__main__":
     import uvicorn

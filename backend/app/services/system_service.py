@@ -3,6 +3,7 @@ import random
 import os
 import psutil
 import time
+import json
 from datetime import datetime, timedelta
 from app.core.config import get_settings
 
@@ -31,6 +32,7 @@ else:
 
 # File untuk custom rules
 CUSTOM_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "custom_rules.conf")
+HOTLINK_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "hotlink.json")
 
 import re
 
@@ -452,3 +454,50 @@ def get_system_health():
         "network": {"in": net_in, "out": net_out},
         "services": services
     }
+
+def get_hotlink_config():
+    """Reads hotlink configuration from JSON"""
+    default_config = {
+        "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
+        "domains": ["google.com", "bing.com", "yahoo.com"]
+    }
+    
+    if os.path.exists(HOTLINK_CONFIG_FILE):
+        try:
+            with open(HOTLINK_CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error reading hotlink config: {e}")
+            
+    return default_config
+
+def save_hotlink_config(config: dict):
+    """Saves hotlink config and generates Nginx directives"""
+    try:
+        # 1. Save JSON for UI
+        with open(HOTLINK_CONFIG_FILE, "w") as f:
+            json.dump(config, f, indent=4)
+            
+        # 2. Generate Nginx Config (Hotlink Protection)
+        ext_str = "|".join(config.get("extensions", []))
+        domains_str = " ".join(config.get("domains", []))
+        
+        nginx_conf = f"""# Auto-generated Hotlink Rules
+# Do not edit manually
+
+location ~ \.({ext_str})$ {{
+    valid_referers none blocked server_names {domains_str};
+    if ($invalid_referer) {{
+        return 403;
+    }}
+}}
+"""
+        HOTLINK_NGINX_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "hotlink.conf")
+        with open(HOTLINK_NGINX_FILE, "w") as f:
+            f.write(nginx_conf)
+
+        restart_nginx()
+        return {"status": "success", "message": "Hotlink configuration saved and applied."}
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

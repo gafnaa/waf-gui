@@ -1,0 +1,18 @@
+{
+    "extensions": [
+        "jpg",
+        "png",
+        "ico",
+        "mp4",
+        "webp",
+        "gif",
+        "svg",
+        "jpeg",
+        "bmp"
+    ],
+    "domains": [
+        "google.com",
+        "bing.com",
+        "yahoo.com"
+    ]
+}

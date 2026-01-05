@@ -42,4 +42,14 @@ export const getUserProfile = () => api.get('/user');
 export const updateUserProfile = (full_name) => api.put('/user/profile', { full_name });
 export const changePassword = (current_password, new_password) => api.put('/user/password', { current_password, new_password });
 
+export const getHotlinkConfig = async () => {
+    const response = await api.get('/waf/hotlink');
+    return response.data;
+};
+
+export const saveHotlinkConfig = async (config) => {
+    const response = await api.post('/waf/hotlink', config);
+    return response.data;
+};
+
 export default api;
