@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
   Bar, 
@@ -146,6 +147,7 @@ const ModuleCard = ({ module, timeRange }) => {
   if (module.title.includes("Brute")) IconComponent = Lock;
   if (module.title.includes("Command")) IconComponent = Terminal;
   if (module.title.includes("Bot")) IconComponent = Bot;
+  if (module.title.includes("Protocol Violation")) IconComponent = FileWarning;
 
   // Color logic based on component type
   let color = 'text-blue-500';
@@ -158,6 +160,7 @@ const ModuleCard = ({ module, timeRange }) => {
   if (module.title.includes("Brute")) { color = 'text-orange-500'; bgColor = 'bg-orange-500/10'; lineColor = '#f97316'; }
   if (module.title.includes("Command")) { color = 'text-slate-500'; bgColor = 'bg-slate-500/10'; lineColor = '#64748b'; }
   if (module.title.includes("Bot")) { color = 'text-emerald-500'; bgColor = 'bg-emerald-500/10'; lineColor = '#10b981'; }
+  if (module.title.includes("Protocol Violation")) { color = 'text-indigo-500'; bgColor = 'bg-indigo-500/10'; lineColor = '#6366f1'; }
 
   return (
     <div className={`relative dark:bg-slate-900/50 bg-white border ${isActive ? 'dark:border-slate-800 border-slate-200' : 'dark:border-slate-800/60 border-slate-200/60 opacity-70'} rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all group overflow-hidden`}>
@@ -216,6 +219,7 @@ const ModuleCard = ({ module, timeRange }) => {
 };
 
 const OverviewPage = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -343,7 +347,11 @@ const OverviewPage = () => {
                         {stats.system_status}
                     </span>
                 </div>
-                <Button variant="ghost" className="text-xs text-blue-500 hover:text-blue-400 hover:bg-transparent p-0 h-auto font-normal cursor-pointer transition-colors">
+                <Button 
+                    variant="ghost" 
+                    onClick={() => navigate('/rules')} 
+                    className="text-xs text-blue-500 hover:text-blue-400 hover:bg-transparent p-0 h-auto font-normal cursor-pointer transition-colors"
+                >
                     Configure Rules <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
             </div>
