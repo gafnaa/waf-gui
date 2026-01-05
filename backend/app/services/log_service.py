@@ -156,7 +156,7 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         AttackModule(id="BOT-05", title="Bad Bots", subtitle="Crawler & Scanner Def", count=attacks["bad_bots"], trend=generate_fake_trend(attacks["bad_bots"]), status=rule_status.get("BOT-05", "Active"), last_incident="Just now"),
         AttackModule(id="BF-06", title="Brute Force", subtitle="Credential Protection", count=attacks["brute_force"], trend=generate_fake_trend(attacks["brute_force"]), status=rule_status.get("BF-06", "Active"), last_incident="2m ago"),
         AttackModule(id="DOS-07", title="DDoS / Flood", subtitle="Rate Limit Protection", count=attacks["dos"], trend=generate_fake_trend(attacks["dos"]), status=rule_status.get("DOS-07", "Active"), last_incident="Unknown"),
-        AttackModule(id="PROTO-08", title="Protocol", subtitle="Invalid Usage / Headers", count=attacks["protocol"], trend=generate_fake_trend(attacks["protocol"]), status=rule_status.get("PROTO-08", "Active"), last_incident="30m ago")
+        AttackModule(id="PROTO-08", title="Protocol Violation", subtitle="Invalid Usage / Headers", count=attacks["protocol"], trend=generate_fake_trend(attacks["protocol"]), status=rule_status.get("PROTO-08", "Active"), last_incident="30m ago")
     ]
 
     return StatsResponse(
