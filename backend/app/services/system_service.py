@@ -16,6 +16,7 @@ WAF_RULES_DB = [
     {"id": "RCE-04", "name": "Remote Code Execution", "desc": "Detects and blocks OS command injection attempts", "category": "System", "enabled": True},
     {"id": "BOT-05", "name": "Bad Bots & Crawlers", "desc": "Blocks known scraper user-agents and aggressive crawling", "category": "Bot", "enabled": True},
     {"id": "BF-06", "name": "Brute Force Protection", "desc": "Mitigates credential stuffing and rapid login attempts", "category": "Auth", "enabled": True},
+    {"id": "DOS-07", "name": "HTTP Flood Protection", "desc": "Rate limiting based on IP to mitigate DoS (OWASP A04)", "category": "DoS", "enabled": True},
 ]
 
 # File khusus untuk menyimpan rule yang dimatikan (Exclusions)
