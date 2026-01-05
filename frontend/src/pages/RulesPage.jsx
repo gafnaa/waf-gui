@@ -9,7 +9,9 @@ import {
   Save, 
   RotateCcw,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  FileWarning,
+  Link
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -87,6 +89,9 @@ const RulesPage = () => {
             case 'System': return Terminal;
             case 'Bot': return Bot;
             case 'Auth': return Lock;
+            case 'DoS': return RotateCcw; 
+            case 'Protocol': return FileWarning; // Ensure we handle new categories
+            case 'Resource': return Link;
             default: return Shield;
         }
     };
