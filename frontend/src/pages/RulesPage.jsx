@@ -203,50 +203,65 @@ const RulesPage = () => {
                         </div>
 
                         {/* Rules List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {rules.map((rule) => {
                             const RuleIcon = getIcon(rule.category);
                             return (
-                                <div key={rule.id} className="dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-lg p-5 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all group shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`p-3 rounded-lg ${rule.enabled ? 'dark:bg-slate-800 bg-slate-100 text-blue-500' : 'dark:bg-slate-800/50 bg-slate-100 text-slate-600'}`}>
-                                            <RuleIcon className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h4 className={`text-base font-bold ${rule.enabled ? 'dark:text-slate-200 text-slate-900' : 'text-slate-500'}`}>{rule.name}</h4>
-                                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${rule.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'dark:bg-slate-800 bg-slate-200 text-slate-500'}`}>
-                                                    {rule.enabled ? 'Active' : 'Inactive'}
-                                                </span>
+                                <div key={rule.id} className="group relative flex flex-col justify-between rounded-xl border bg-card text-card-foreground shadow-sm dark:bg-slate-950/50 bg-white dark:border-slate-800 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                                    <div className="p-6">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-md border ${rule.enabled ? 'bg-primary/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-transparent'}`}>
+                                                    <RuleIcon className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold leading-none tracking-tight text-sm dark:text-slate-100 text-slate-900">{rule.name}</h4>
+                                                    <span className="text-[10px] text-muted-foreground mt-1 block uppercase tracking-wider font-medium opacity-70">{rule.category}</span>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-slate-500 mt-0.5">{rule.desc}</p>
+                                            
+                                            <div className="flex items-center gap-2">
+                                                {rule.id === 'HOTLINK-09' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                        onClick={handleOpenHotlink}
+                                                    >
+                                                        <Settings className="w-4 h-4" />
+                                                    </Button>
+                                                )}
+                                                {/* Shadcn-like Switch */}
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="sr-only peer" 
+                                                        checked={rule.enabled}
+                                                        onChange={() => handleToggle(rule.id, rule.enabled)}
+                                                    />
+                                                    <div className="w-9 h-5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 bg-slate-200 dark:bg-slate-800 peer-checked:bg-blue-600">
+                                                        <div className={`absolute top-1 left-1 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4">
+                                            <p className="text-sm text-muted-foreground text-slate-500 dark:text-slate-400 leading-relaxed">
+                                                {rule.desc}
+                                            </p>
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-3">
-                                        {rule.id === 'HOTLINK-09' && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                onClick={handleOpenHotlink}
-                                                className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10"
-                                                title="Configure Hotlink Settings"
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input 
-                                                type="checkbox" 
-                                                className="sr-only peer" 
-                                                checked={rule.enabled}
-                                                onChange={() => handleToggle(rule.id, rule.enabled)}
-                                            />
-                                            <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-800 rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
-                                        </label>
-                                    </div>
+                                    {rule.enabled && (
+                                        <div className="px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 rounded-b-xl flex items-center justify-end">
+                                             <span className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-medium">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/> Active Protection
+                                             </span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 )}
 
