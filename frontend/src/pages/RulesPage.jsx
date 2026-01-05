@@ -231,7 +231,7 @@ const RulesPage = () => {
                                                         <Settings className="w-4 h-4" />
                                                     </Button>
                                                 )}
-                                                {/* Shadcn-like Switch */}
+                                                {/* Enhanced Shadcn-like Switch */}
                                                 <label className="relative inline-flex items-center cursor-pointer">
                                                     <input 
                                                         type="checkbox" 
@@ -239,8 +239,8 @@ const RulesPage = () => {
                                                         checked={rule.enabled}
                                                         onChange={() => handleToggle(rule.id, rule.enabled)}
                                                     />
-                                                    <div className="w-9 h-5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 bg-slate-200 dark:bg-slate-800 peer-checked:bg-blue-600">
-                                                        <div className={`absolute top-1 left-1 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                    <div className={`w-11 h-6 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${rule.enabled ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>
+                                                        <div className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${rule.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                                                     </div>
                                                 </label>
                                             </div>
