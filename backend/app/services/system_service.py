@@ -17,6 +17,7 @@ WAF_RULES_DB = [
     {"id": "BOT-05", "name": "Bad Bots & Crawlers", "desc": "Blocks known scraper user-agents and aggressive crawling", "category": "Bot", "enabled": True},
     {"id": "BF-06", "name": "Brute Force Protection", "desc": "Mitigates credential stuffing and rapid login attempts", "category": "Auth", "enabled": True},
     {"id": "DOS-07", "name": "HTTP Flood Protection", "desc": "Rate limiting based on IP to mitigate DoS (OWASP A04)", "category": "DoS", "enabled": True},
+    {"id": "PROTO-08", "name": "HTTP Protocol Violations", "desc": "Blocks malformed requests, invalid headers/methods (OWASP A06)", "category": "Protocol", "enabled": True},
 ]
 
 # File khusus untuk menyimpan rule yang dimatikan (Exclusions)

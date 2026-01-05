@@ -79,7 +79,7 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
     blocked = 0
     attacks = defaultdict(int) 
     # Init keys for API consistency
-    for k in ["sql_injection", "xss", "lfi", "rce", "bad_bots", "brute_force", "dos"]:
+    for k in ["sql_injection", "xss", "lfi", "rce", "bad_bots", "brute_force", "dos", "protocol"]:
         attacks[k] = 0
     
     # Fetch current rule configuration
@@ -131,6 +131,8 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
                                     attacks["brute_force"] += 1
                                 elif " 503 " in line or "ratelimit" in line_lower:
                                     attacks["dos"] += 1
+                                elif " 400 " in line or " 405 " in line or " 413 " in line or " 414 " in line:
+                                    attacks["protocol"] += 1
                                 else:
                                     attacks["bad_bots"] += 1
                             
@@ -153,7 +155,8 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         AttackModule(id="RCE-04", title="RCE", subtitle="Remote Code Execution", count=attacks["rce"], trend=generate_fake_trend(attacks["rce"]), status=rule_status.get("RCE-04", "Active"), last_incident="Unknown"),
         AttackModule(id="BOT-05", title="Bad Bots", subtitle="Crawler & Scanner Def", count=attacks["bad_bots"], trend=generate_fake_trend(attacks["bad_bots"]), status=rule_status.get("BOT-05", "Active"), last_incident="Just now"),
         AttackModule(id="BF-06", title="Brute Force", subtitle="Credential Protection", count=attacks["brute_force"], trend=generate_fake_trend(attacks["brute_force"]), status=rule_status.get("BF-06", "Active"), last_incident="2m ago"),
-        AttackModule(id="DOS-07", title="DDoS / Flood", subtitle="Rate Limit Protection", count=attacks["dos"], trend=generate_fake_trend(attacks["dos"]), status=rule_status.get("DOS-07", "Active"), last_incident="Unknown")
+        AttackModule(id="DOS-07", title="DDoS / Flood", subtitle="Rate Limit Protection", count=attacks["dos"], trend=generate_fake_trend(attacks["dos"]), status=rule_status.get("DOS-07", "Active"), last_incident="Unknown"),
+        AttackModule(id="PROTO-08", title="Protocol", subtitle="Invalid Usage / Headers", count=attacks["protocol"], trend=generate_fake_trend(attacks["protocol"]), status=rule_status.get("PROTO-08", "Active"), last_incident="30m ago")
     ]
 
     return StatsResponse(
@@ -257,6 +260,8 @@ def get_attack_type(line: str, status_code: int) -> str:
         return "Brute Force"
     if status_code == 503:
         return "HTTP Flood"
+    if status_code in [400, 405, 413, 414]:
+        return "Protocol Violation"
     
     if status_code >= 400 and status_code < 500:
          return "Suspicious"
