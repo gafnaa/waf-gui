@@ -149,7 +149,6 @@ const ModuleCard = ({ module, timeRange }) => {
   if (module.title.includes("Command")) IconComponent = Terminal;
   if (module.title.includes("Bot")) IconComponent = Bot;
   if (module.title.includes("Protocol Violation")) IconComponent = FileWarning;
-  if (module.title.includes("Hotlink")) IconComponent = Link;
 
   // Color logic based on component type
   let color = 'text-blue-500';
@@ -163,7 +162,6 @@ const ModuleCard = ({ module, timeRange }) => {
   if (module.title.includes("Command")) { color = 'text-slate-500'; bgColor = 'bg-slate-500/10'; lineColor = '#64748b'; }
   if (module.title.includes("Bot")) { color = 'text-emerald-500'; bgColor = 'bg-emerald-500/10'; lineColor = '#10b981'; }
   if (module.title.includes("Protocol Violation")) { color = 'text-indigo-500'; bgColor = 'bg-indigo-500/10'; lineColor = '#6366f1'; }
-  if (module.title.includes("Hotlink")) { color = 'text-pink-500'; bgColor = 'bg-pink-500/10'; lineColor = '#ec4899'; }
 
   return (
     <div className={`relative dark:bg-slate-900/50 bg-white border ${isActive ? 'dark:border-slate-800 border-slate-200' : 'dark:border-slate-800/60 border-slate-200/60 opacity-70'} rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all group overflow-hidden`}>
