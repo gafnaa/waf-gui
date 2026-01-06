@@ -207,7 +207,7 @@ const RulesPage = () => {
                         {rules.map((rule) => {
                             const RuleIcon = getIcon(rule.category);
                             return (
-                                <div key={rule.id} className="group relative flex flex-col justify-between rounded-xl border bg-card text-card-foreground shadow-sm dark:bg-slate-950/50 bg-white dark:border-slate-800 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                                <div key={rule.id} className={`group relative flex flex-col justify-between rounded-xl border bg-card text-card-foreground shadow-sm dark:bg-slate-950/50 bg-white transition-all ${rule.enabled ? 'border-blue-500/50 dark:border-blue-500/50 shadow-[0_0_20px_-10px_rgba(59,130,246,0.3)]' : 'dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                                     <div className="p-6">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex items-center gap-3">
@@ -251,13 +251,13 @@ const RulesPage = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    {rule.enabled && (
-                                        <div className="px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 rounded-b-xl flex items-center justify-end">
-                                             <span className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-medium">
+                                    <div className="px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-800 rounded-b-xl flex items-center justify-end min-h-[41px]">
+                                        {rule.enabled && (
+                                            <span className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-medium">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/> Active Protection
-                                             </span>
-                                        </div>
-                                    )}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
