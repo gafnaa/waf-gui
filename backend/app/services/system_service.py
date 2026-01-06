@@ -345,9 +345,8 @@ def get_services_status():
     """
     target_services = [
         {"name": "nginx", "label": "Nginx Web Server"},
-        {"name": "fail2ban", "label": "Fail2Ban WAF"},
-        {"name": "sshd", "label": "SSH Service"},
-        {"name": "postgresql", "label": "Database"}
+        {"name": "modsec_crs", "label": "Protection Rules (OWASP CRS)"},
+        {"name": "sshd", "label": "SSH Service"}
     ]
     
     results = []
@@ -356,14 +355,34 @@ def get_services_status():
     if os.name == 'nt':
         # Return random simulated data for preview
         return [
-            {"id": "nginx", "name": "Nginx", "status": "Active", "pid": 1024, "cpu": f"{random.uniform(0.5, 5.0):.1f}%", "uptime": "14d"},
-            {"id": "fail2ban", "name": "Fail2Ban", "status": "Active", "pid": 1025, "cpu": f"{random.uniform(0.1, 1.0):.1f}%", "uptime": "14d"},
-            {"id": "ssh", "name": "SSH", "status": "Sleeping", "pid": 892, "cpu": "0.1%", "uptime": "45d"},
-            {"id": "postgresql", "name": "PostgreSQL", "status": "Active", "pid": 5432, "cpu": "1.2%", "uptime": "3d"},
+            {"id": "nginx", "name": "Nginx Web Server", "status": "Active", "pid": "1024", "cpu": f"{random.uniform(0.5, 5.0):.1f}%", "uptime": "14d"},
+            {"id": "crs", "name": "Protection Rules (OWASP CRS)", "status": "Active", "pid": "-", "cpu": "-", "uptime": "14d"},
+            {"id": "ssh", "name": "SSH Service", "status": "Active", "pid": "892", "cpu": "0.1%", "uptime": "45d"},
         ]
 
     for svc in target_services:
         s_name = svc["name"]
+        
+        # Virtual Service: OWASP CRS
+        if s_name == "modsec_crs":
+             # Logic: If Nginx is running, CRS is likely loaded. 
+             # We can't check a PID for rules.
+             item = {
+                "id": "crs",
+                "name": svc["label"],
+                "status": "Active", # Assume active if Nginx is
+                "pid": "-",
+                "cpu": "-",
+                "uptime": "-"
+             }
+             # Check if nginx is actually running to be accurate
+             res = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
+             if res.returncode != 0:
+                 item["status"] = "Inactive"
+             
+             results.append(item)
+             continue
+
         item = {
             "id": svc["name"],
             "name": svc["label"],
@@ -385,12 +404,12 @@ def get_services_status():
                 pid_str = res_pid.stdout.strip()
                 
                 if pid_str and pid_str != "0":
-                    pid = int(pid_str)
+                    pid = str(pid_str) # Ensure string
                     item["pid"] = pid
                     
                     # Get CPU & Uptime via psutil
                     try:
-                        p = psutil.Process(pid)
+                        p = psutil.Process(int(pid_str))
                         # cpu_percent needs to be called once, then again to get interval. 
                         # But simpler is just 0.0 or last value. 
                         # For 'instant' reading without blocking, we might get 0.0 often.

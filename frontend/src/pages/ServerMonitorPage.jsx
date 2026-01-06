@@ -146,6 +146,7 @@ const ServerMonitorPage = () => {
     };
 
     if (loading && !status) return <div className="text-center text-slate-500 mt-20">Connecting to server node...</div>;
+    if (!status) return <div className="text-center text-rose-500 mt-20">Failed to load system status. Check backend connection.</div>;
 
     // Chart Colors based on theme
     const chartGridColor = theme === 'dark' ? '#1e293b' : '#e2e8f0'; // slate-800 vs slate-200
@@ -434,9 +435,8 @@ const ServerMonitorPage = () => {
                 
                 {/* Active Services List */}
                 <div className="lg:col-span-2 dark:bg-slate-900/50 bg-white border dark:border-slate-800 border-slate-200 rounded-xl flex flex-col shadow-sm">
-                    <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex justify-between items-center">
+                    <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex items-center">
                         <h3 className="font-bold dark:text-slate-200 text-slate-900">Active Services</h3>
-                        <a href="#" className="text-xs text-blue-500 hover:text-blue-400">View All</a>
                     </div>
                     <div className="p-2">
                         <table className="w-full text-left text-sm">

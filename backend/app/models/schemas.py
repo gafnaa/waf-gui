@@ -78,7 +78,7 @@ class WafRuleStatus(BaseModel):
 class ServiceStatus(BaseModel):
     name: str
     status: str # 'Active', 'Inactive', 'Sleeping'
-    pid: int
+    pid: str
     cpu: str
     uptime: str
 
