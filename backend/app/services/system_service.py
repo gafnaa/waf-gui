@@ -390,3 +390,47 @@ def get_system_health():
         "network": {"in": net_in, "out": net_out},
         "services": services
     }
+
+def factory_reset():
+    """Wipes all data and resets to default state"""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # 1. Truncate Tables
+            cursor.execute("DELETE FROM ip_rules")
+            cursor.execute("DELETE FROM waf_rule_toggles")
+            cursor.execute("DELETE FROM settings")
+            cursor.execute("DELETE FROM users") # Wipe users
+
+            # 2. Restore Default Admin
+            # admin123 hash
+            default_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW" 
+            cursor.execute(
+                "INSERT INTO users (username, full_name, hashed_password) VALUES (?, ?, ?)",
+                ("admin", "Administrator", default_hash)
+            )
+            
+            conn.commit()
+
+        # 3. Reset Files
+        sync_ip_rules_file()
+        sync_exclusions_file()
+        
+        # Reset Hotlink
+        default_hotlink = {
+            "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
+            "domains": ["google.com", "bing.com", "yahoo.com"]
+        }
+        save_hotlink_config(default_hotlink)
+        
+        # Reset Custom Rules
+        save_custom_rules("# Custom ModSecurity Rules\n# Add your custom rules here...\n")
+        
+        # 4. Restart System
+        restart_nginx()
+        
+        return {"status": "success", "message": "System has been reset to factory defaults. Please login with default credentials."}
+        
+    except Exception as e:
+        return {"status": "error", "message": f"Factory reset failed: {str(e)}"}

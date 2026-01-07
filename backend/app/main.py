@@ -127,6 +127,11 @@ def get_hotlink_config(user = Depends(auth_service.get_current_user)):
 def save_hotlink_config(config: HotlinkConfig, user = Depends(auth_service.get_current_user)):
     return system_service.save_hotlink_config(config.dict())
 
+@app.post("/api/system/factory-reset", response_model=CommandResponse)
+def factory_reset(user = Depends(auth_service.get_current_user)):
+    # Optional: Check if user is strict admin
+    return system_service.factory_reset()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
