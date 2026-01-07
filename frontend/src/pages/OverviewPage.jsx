@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { getStats } from "../services/api";
+import { getStats, exportReport } from "../services/api";
 import { useTheme } from '../context/ThemeContext';
 
 // --- Hooks & Components for Animation ---
@@ -253,6 +253,24 @@ const OverviewPage = () => {
         return () => clearInterval(interval);
     }, [timeRange]);
 
+    const handleExport = async () => {
+        try {
+            const response = await exportReport();
+            // Create blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'waf_report.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error("Export failed:", err);
+            setError("Failed to export report.");
+            setTimeout(() => setError(null), 3000);
+        }
+    };
+
     if (loading && !stats) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] text-slate-400 gap-3">
@@ -300,7 +318,12 @@ const OverviewPage = () => {
                             </button>
                         ))}
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20"
+                        onClick={handleExport}
+                    >
                         <Download className="w-3.5 h-3.5" />
                         <span>Export Report</span>
                     </Button>

@@ -37,6 +37,7 @@ export const loginUser = (username, password) => {
 };
 
 export const getStats = (range = "live") => api.get(`/stats?range=${range}`);
+export const exportReport = () => api.get('/reports/export', { responseType: 'blob' });
 export const addWafRule = (ip, action, note = "", duration = "Permanent") => api.post('/waf/rule', { ip, action, note, duration });
 export const getActiveIps = () => api.get('/waf/active-ips');
 export const getIpRules = () => api.get('/waf/ip-rules');

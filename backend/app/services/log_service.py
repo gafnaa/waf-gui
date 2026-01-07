@@ -452,3 +452,26 @@ def parse_single_line_safely(line, index, total_lines):
         )
     except:
         return None
+
+def export_logs_csv(limit: int = 1000) -> str:
+    """Generates a CSV string of the latest logs"""
+    output = ["Timestamp,IP Address,Country,Method,Path,Status Code,Attack Type"]
+    
+    if os.path.exists(settings.ACCESS_LOG_PATH):
+        try:
+            with open(settings.ACCESS_LOG_PATH, "r") as f:
+                lines = f.readlines()
+                # Process latest N lines in reverse
+                count = 0
+                for i in range(len(lines) - 1, -1, -1):
+                    if count >= limit: break
+                    
+                    parsed = parse_single_line_safely(lines[i], i, len(lines))
+                    if parsed:
+                        row = f"{parsed.timestamp},{parsed.source_ip},{parsed.country},{parsed.method},{parsed.path},{parsed.status_code},{parsed.attack_type}"
+                        output.append(row)
+                        count += 1
+        except Exception as e:
+            output.append(f"Error reading logs: {str(e)}")
+            
+    return "\n".join(output)
