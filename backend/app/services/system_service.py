@@ -4,12 +4,29 @@ import os
 import psutil
 import time
 import json
-from datetime import datetime, timedelta
+import re
+from datetime import datetime
 from app.core.config import get_settings
+from app.db import get_db_connection
 
 settings = get_settings()
 
-# Simulasi database rule (Di production ini mapping ke ID OWASP CRS)
+# --- Configuration Files (Generated from DB) ---
+if os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
+    # Dev Mode
+    PREFIX = os.path.join(os.path.dirname(__file__), "..", "..")
+    IP_RULES_FILE = os.path.join(PREFIX, "dummy_waf.conf")
+    EXCLUSION_FILE = os.path.join(PREFIX, "dummy_waf_exclusions.conf")
+    CUSTOM_RULES_FILE = os.path.join(PREFIX, "custom_rules.conf")
+    HOTLINK_NGINX_FILE = os.path.join(PREFIX, "hotlink.conf")
+else:
+    # Production Mode
+    IP_RULES_FILE = "/etc/nginx/modsec/whitelist.conf" # Assuming standard include
+    EXCLUSION_FILE = "/etc/nginx/modsec/waf-exclusions.conf"
+    CUSTOM_RULES_FILE = "/etc/nginx/modsec/custom_rules.conf"
+    HOTLINK_NGINX_FILE = "/etc/nginx/conf.d/hotlink.conf"
+
+# --- Static Definitions ---
 WAF_RULES_DB = [
     {"id": "SQL-01", "name": "SQL Injection", "desc": "Blocks common SQL injection vectors (OWASP A03)", "category": "Injection", "enabled": True},
     {"id": "XSS-02", "name": "Cross-Site Scripting (XSS)", "desc": "Filters malicious scripts in headers and body parameters (OWASP A07)", "category": "Injection", "enabled": True},
@@ -22,21 +39,7 @@ WAF_RULES_DB = [
     {"id": "HOTLINK-09", "name": "Hotlink Protection", "desc": "Prevents bandwidth theft by blocking unauthorized cross-site image linking", "category": "Resource", "enabled": False},
 ]
 
-# File khusus untuk menyimpan rule yang dimatikan (Exclusions)
-if os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
-    # Dev Mode: Use local file
-    EXCLUSION_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "dummy_waf_exclusions.conf")
-else:
-    # Production Mode (Linux/Nginx)
-    EXCLUSION_FILE = "/etc/nginx/modsec/waf-exclusions.conf"
-
-# File untuk custom rules
-CUSTOM_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "custom_rules.conf")
-HOTLINK_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "hotlink.json")
-
-import re
-
-IP_RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "dummy_waf.conf")
+# --- Helper Functions ---
 
 def restart_nginx():
     """Reload Nginx safely via sudo"""
@@ -44,268 +47,214 @@ def restart_nginx():
         subprocess.run(["sudo", "/usr/bin/systemctl", "reload", "nginx"], check=True)
         return {"status": "success", "message": "Nginx reloaded successfully"}
     except subprocess.CalledProcessError as e:
-        # Fallback untuk mode development di Windows/Mac (agar tidak error 500)
         return {"status": "warning", "message": f"Simulated Reload (Dev Mode): {str(e)}"}
+    except FileNotFoundError:
+        return {"status": "warning", "message": "Nginx verify/reload skipped (Dev Mode)"}
+
+def sync_ip_rules_file():
+    """Generates Nginx config file from DB"""
+    with get_db_connection() as conn:
+        rows = conn.execute("SELECT * FROM ip_rules WHERE status = 'Active'").fetchall()
+    
+    # Ensure dir exists
+    os.makedirs(os.path.dirname(IP_RULES_FILE), exist_ok=True)
+    
+    with open(IP_RULES_FILE, "w") as f:
+        f.write(f"# Auto-generated from WAF GUI DB at {datetime.now()}\n")
+        f.write("# Do not edit manually.\n\n")
+        for r in rows:
+            line = f"# Meta: {r['note']}|{r['duration']}\n{r['action']} {r['ip']};\n"
+            f.write(line)
+
+def sync_exclusions_file():
+    """Generates WAF exclusions file from DB"""
+    with get_db_connection() as conn:
+        rows = conn.execute("SELECT rule_id FROM waf_rule_toggles WHERE enabled = 0").fetchall()
+    
+    disabled_ids = [r['rule_id'] for r in rows]
+    
+    os.makedirs(os.path.dirname(EXCLUSION_FILE), exist_ok=True)
+    
+    with open(EXCLUSION_FILE, "w") as f:
+        f.write(f"# Auto-generated WAF Exclusions at {datetime.now()}\n")
+        for rule_id in disabled_ids:
+            f.write(f"SecRuleRemoveById {rule_id}\n")
+
+# --- Service Functions ---
 
 def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "Permanent"):
-    """
-    Adds an IP block/allow rule to Nginx config.
-    Format:
-    # Meta: note|duration
-    deny 192.168.1.1;
-    """
     if action not in ["deny", "allow"]:
         return {"status": "error", "message": "Action must be 'deny' or 'allow'"}
     
-    # Basic validation (could use regex for stricter IP/CIDR)
     if not ip_address:
         return {"status": "error", "message": "IP Address is required"}
 
-    # Check for duplicates
-    if os.path.exists(IP_RULES_FILE):
-        with open(IP_RULES_FILE, "r") as f:
-            content = f.read()
-            # Simple check: search for "deny <ip>;" or "allow <ip>;"
-            # Regex is safer to avoid partial matches (e.g. 1.1 matches 1.1.1.1)
-            pattern = f"\\b{action}\\s+{re.escape(ip_address)};"
-            if re.search(pattern, content):
-                 return {"status": "error", "message": f"Rule for {ip_address} already exists"}
-
     try:
-        entry = f"# Meta: {note}|{duration}\n{action} {ip_address};\n"
-        
-        with open(IP_RULES_FILE, "a") as f:
-            f.write(entry)
+        with get_db_connection() as conn:
+            # Check duplicate
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM ip_rules WHERE ip = ?", (ip_address,))
+            if cursor.fetchone():
+                return {"status": "error", "message": f"Rule for {ip_address} already exists"}
             
+            # Insert
+            # Fake region detection
+            region = "US" if "1" in ip_address else ("CN" if "182" in ip_address else "Local")
+            
+            cursor.execute(
+                "INSERT INTO ip_rules (ip, action, note, duration, region) VALUES (?, ?, ?, ?, ?)",
+                (ip_address, action, note, duration, region)
+            )
+            conn.commit()
+            
+        sync_ip_rules_file()
         restart_nginx()
         return {"status": "success", "message": f"Rule added for {ip_address}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 def get_ip_rules():
-    """Parses the IP rules file"""
-    rules = []
-    if not os.path.exists(IP_RULES_FILE):
-        return rules
-        
-    try:
-        with open(IP_RULES_FILE, "r") as f:
-            lines = f.readlines()
-            
-        current_meta = {"note": "-", "duration": "Permanent"}
-        
-        for line in lines:
-            line = line.strip()
-            if not line: 
-                continue
-                
-            if line.startswith("# Meta:"):
-                # Parse metadata
-                try:
-                    parts = line.split(":", 1)[1].strip().split("|")
-                    current_meta["note"] = parts[0] if len(parts) > 0 else "-"
-                    current_meta["duration"] = parts[1] if len(parts) > 1 else "Permanent"
-                except:
-                    pass
-            elif line.startswith("deny") or line.startswith("allow"):
-                # Parse Rule: deny 1.2.3.4;
-                try:
-                    parts = line.rstrip(";").split()
-                    action = parts[0]
-                    ip = parts[1]
-                    
-                    # Fake Region
-                    region = "US" if "1" in ip else ("CN" if "182" in ip else "Local")
-                    
-                    rules.append({
-                        "ip": ip,
-                        "action": action,
-                        "note": current_meta["note"],
-                        "duration": current_meta["duration"],
-                        "region": region,
-                        "status": "Active"
-                    })
-                    # Reset meta after consuming
-                    current_meta = {"note": "-", "duration": "Permanent"}
-                except:
-                    pass
-            else:
-                # Ordinary comment or other config, ignore or reset meta
-                # If it's not a Meta comment, we lose the context for the next rule usually.
-                # But let's assume strict format.
-                pass
-                
-    except Exception as e:
-        print(f"Error parsing rules: {e}")
-        
-    return rules
+    with get_db_connection() as conn:
+        # Get active rules
+        rows = conn.execute("SELECT * FROM ip_rules ORDER BY created_at DESC").fetchall()
+    
+    return [dict(r) for r in rows]
 
 def delete_ip_rule(ip_address: str):
-    """Removes a rule by IP"""
-    if not os.path.exists(IP_RULES_FILE):
-        return {"status": "error", "message": "Config file not found"}
-
     try:
-        with open(IP_RULES_FILE, "r") as f:
-            lines = f.readlines()
-        
-        new_lines = []
-        skip_next = False
-        
-        # We need to filter out the Rule AND its preceding Meta comment.
-        # Simple approach: build a list of indices to remove
-        
-        # Better approach: Iterate and buffer.
-        # Since Meta is strictly above the rule, we can just filter blocks.
-        
-        parsed_entries = [] # Stores tuples (lines_list, ip_addr OR None)
-        
-        buffer = []
-        for line in lines:
-            buffer.append(line)
-            if line.strip().endswith(";"):
-                # Check IP
-                # Extraction
-                clean = line.strip().rstrip(";")
-                parts = clean.split()
-                if len(parts) >= 2:
-                    current_ip = parts[1]
-                    # If matches delete target, discard buffer
-                    if current_ip == ip_address:
-                        buffer = [] # Discard
-                    else:
-                        new_lines.extend(buffer)
-                        buffer = []
-                else:
-                    new_lines.extend(buffer)
-                    buffer = []
-        
-        # Add remaining (trailing newlines etc)
-        new_lines.extend(buffer)
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM ip_rules WHERE ip = ?", (ip_address,))
+            if cursor.rowcount == 0:
+                return {"status": "error", "message": "IP Rule not found"}
+            conn.commit()
             
-        with open(IP_RULES_FILE, "w") as f:
-            f.writelines(new_lines)
-            
+        sync_ip_rules_file()
         restart_nginx()
         return {"status": "success", "message": f"Rule removed for {ip_address}"}
-
     except Exception as e:
-        return {"status": "error", "message": str(e)} 
+        return {"status": "error", "message": str(e)}
 
 def get_waf_rules():
-    """Mendapatkan status rule saat ini"""
-    # Di sistem nyata, kita baca file EXCLUSION_FILE untuk melihat mana yang mati
-    # Logika sederhana: Jika ID ada di exclusion file, berarti enabled = False
+    # Merge Static Info with DB State
+    rules = [r.copy() for r in WAF_RULES_DB]
     
-    current_rules = [r.copy() for r in WAF_RULES_DB] # Deep copy
+    with get_db_connection() as conn:
+        rows = conn.execute("SELECT rule_id, enabled FROM waf_rule_toggles").fetchall()
+        db_state = {r['rule_id']: bool(r['enabled']) for r in rows}
     
-    if os.path.exists(EXCLUSION_FILE):
-        with open(EXCLUSION_FILE, 'r') as f:
-            content = f.read()
-            for rule in current_rules:
-                # Jika ada 'SecRuleRemoveById ID', berarti rule itu MATI
-                if f"SecRuleRemoveById {rule['id']}" in content:
-                    rule['enabled'] = False
-    
-    return current_rules
+    for rule in rules:
+        if rule['id'] in db_state:
+            rule['enabled'] = db_state[rule['id']]
+            
+    return rules
 
 def toggle_rule(rule_id: str, enable: bool):
-    """Menyalakan/Mematikan Rule WAF"""
-    
-    # Validasi ID
+    # Verify ID exists
     rule = next((r for r in WAF_RULES_DB if r['id'] == rule_id), None)
     if not rule:
         return {"status": "error", "message": "Rule ID not found"}
-
+    
     try:
-        # Jika enable=False, kita TULIS pengecualian ke file
-        # Jika enable=True, kita HAPUS pengecualian dari file
-        
-        # 1. Baca isi file lama
-        existing_lines = []
-        if os.path.exists(EXCLUSION_FILE):
-            with open(EXCLUSION_FILE, 'r') as f:
-                existing_lines = f.readlines()
-        
-        exclusion_line = f"SecRuleRemoveById {rule_id}\n"
-        
-        # 2. Modifikasi isi
-        new_lines = []
-        if not enable:
-            # Matikan rule -> Tambahkan exclusion jika belum ada
-            new_lines = existing_lines
-            if exclusion_line not in existing_lines:
-                new_lines.append(exclusion_line)
-        else:
-            # Nyalakan rule -> Hapus exclusion
-            new_lines = [line for line in existing_lines if line.strip() != exclusion_line.strip()]
-
-        # 3. Tulis ulang file
-        # Gabungkan lines jadi satu string
-        content_str = "".join(new_lines)
-        
-        # Jika dev mode (file lokal), tulis langsung. Jika prod, pakai sudo tee.
-        if os.name == 'nt' or "dummy" in EXCLUSION_FILE:
-             with open(EXCLUSION_FILE, "w") as f:
-                 f.write(content_str)
-        else:
-             # Tulis via subprocess sudo
-             cmd = f"echo '{content_str}' | sudo tee {EXCLUSION_FILE}"
-             subprocess.run(cmd, shell=True, check=True)
-        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            # Upsert (SQLite syntax: INSERT OR REPLACE)
+            cursor.execute(
+                "INSERT OR REPLACE INTO waf_rule_toggles (rule_id, enabled) VALUES (?, ?)",
+                (rule_id, 1 if enable else 0)
+            )
+            conn.commit()
+            
+        sync_exclusions_file()
         restart_nginx()
+        
         status_msg = "Enabled" if enable else "Disabled"
         return {"status": "success", "message": f"Rule {rule['name']} is now {status_msg}"}
+    
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
+def get_hotlink_config():
+    default_config = {
+        "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
+        "domains": ["google.com", "bing.com", "yahoo.com"]
+    }
+    
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key = 'hotlink_config'").fetchone()
+        if row:
+            try:
+                return json.loads(row['value'])
+            except:
+                pass
+                
+    return default_config
+
+def save_hotlink_config(config: dict):
+    try:
+        # Save to DB
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                ("hotlink_config", json.dumps(config))
+            )
+            conn.commit()
+
+        # Generate Nginx Config
+        ext_str = "|".join(config.get("extensions", []))
+        domains_str = " ".join(config.get("domains", []))
+        
+        nginx_conf = f"""# Auto-generated Hotlink Rules
+# Do not edit manually
+
+location ~ \.({ext_str})$ {{
+    valid_referers none blocked server_names {domains_str};
+    if ($invalid_referer) {{
+        return 403;
+    }}
+}}
+"""
+        os.makedirs(os.path.dirname(HOTLINK_NGINX_FILE), exist_ok=True)
+        with open(HOTLINK_NGINX_FILE, "w") as f:
+            f.write(nginx_conf)
+
+        restart_nginx()
+        return {"status": "success", "message": "Hotlink configuration saved and applied."}
+        
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 def get_custom_rules():
-    """Read custom rules from file"""
     if os.path.exists(CUSTOM_RULES_FILE):
         with open(CUSTOM_RULES_FILE, "r") as f:
             return {"content": f.read()}
     return {"content": "# Custom ModSecurity Rules\n# Add your custom rules here...\n"}
 
 def save_custom_rules(content: str):
-    """Save custom rules to file and reload Nginx"""
     try:
-        # Di production, validasi syntax dulu dengan `nginx -t` sebelum save idealnya.
+        os.makedirs(os.path.dirname(CUSTOM_RULES_FILE), exist_ok=True)
         with open(CUSTOM_RULES_FILE, "w") as f:
             f.write(content)
-        
-        # Di real server, file ini harus di-include di nginx.conf
-        # Disini kita cuma save file dan restart.
-        
         restart_nginx()
         return {"status": "success", "message": "Custom rules saved and applied."}
     except Exception as e:
          return {"status": "error", "message": f"Failed to save rules: {str(e)}"}
 
 def clear_cache():
-    """Clears Nginx cache and temporary files"""
     try:
         if os.name == 'nt':
-            # Windows/Dev: Just simulate
-            import time
-            time.sleep(1) # Simulate work
+            time.sleep(1)
             return {"status": "success", "message": "Cache cleared successfully (Simulation)"}
         else:
-            # Linux: Clear nginx cache directories
-            # Assuming standard paths
             subprocess.run("sudo rm -rf /var/cache/nginx/*", shell=True, check=True)
-            restart_nginx() # Reload to clear memory cache
+            restart_nginx()
             return {"status": "success", "message": "Nginx cache cleared"}
     except Exception as e:
         return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
 
 def manage_service(service_name: str, action: str):
-    """
-    Start/Stop/Restart a system service.
-    """
     ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban"]
-    
-    # Mapping friendly names to actual systemd service names if needed
     SERVICE_MAP = {
         "ssh": "sshd",
         "nginx": "nginx",
@@ -323,12 +272,9 @@ def manage_service(service_name: str, action: str):
 
     try:
         if os.name == 'nt':
-            # Dev Mode Simulation
             time.sleep(1)
             return {"status": "success", "message": f"[DEV] Service {sys_name} {action}ed successfully."}
         else:
-            # Production: Use systemctl
-            # Note: The user runner must have sudo NOPASSWD for /bin/systemctl or equivalent
             cmd = ["sudo", "/usr/bin/systemctl", action, sys_name]
             subprocess.run(cmd, check=True)
             return {"status": "success", "message": f"Service {sys_name} {action}ed successfully."}
@@ -339,10 +285,6 @@ def manage_service(service_name: str, action: str):
         return {"status": "error", "message": str(e)}
 
 def get_services_status():
-    """
-    Get status of monitored services.
-    Uses psutil to find processes and systemctl for status if available.
-    """
     target_services = [
         {"name": "nginx", "label": "Nginx Web Server"},
         {"name": "modsec_crs", "label": "Protection Rules (OWASP CRS)"},
@@ -353,7 +295,6 @@ def get_services_status():
     
     # Windows Dev Mode Fallback
     if os.name == 'nt':
-        # Return random simulated data for preview
         return [
             {"id": "nginx", "name": "Nginx Web Server", "status": "Active", "pid": "1024", "cpu": f"{random.uniform(0.5, 5.0):.1f}%", "uptime": "14d"},
             {"id": "crs", "name": "Protection Rules (OWASP CRS)", "status": "Active", "pid": "-", "cpu": "-", "uptime": "14d"},
@@ -365,17 +306,14 @@ def get_services_status():
         
         # Virtual Service: OWASP CRS
         if s_name == "modsec_crs":
-             # Logic: If Nginx is running, CRS is likely loaded. 
-             # We can't check a PID for rules.
              item = {
                 "id": "crs",
                 "name": svc["label"],
-                "status": "Active", # Assume active if Nginx is
+                "status": "Active",
                 "pid": "-",
                 "cpu": "-",
                 "uptime": "-"
              }
-             # Check if nginx is actually running to be accurate
              res = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
              if res.returncode != 0:
                  item["status"] = "Inactive"
@@ -393,34 +331,22 @@ def get_services_status():
         }
         
         try:
-            # Check status using systemctl
-            # is-active returns 0 if active, others if not
             res = subprocess.run(["systemctl", "is-active", s_name], capture_output=True, text=True)
             if res.returncode == 0:
                 item["status"] = "Active"
-                
-                # Get PID
                 res_pid = subprocess.run(["systemctl", "show", "--property", "MainPID", "--value", s_name], capture_output=True, text=True)
                 pid_str = res_pid.stdout.strip()
                 
                 if pid_str and pid_str != "0":
-                    pid = str(pid_str) # Ensure string
+                    pid = str(pid_str)
                     item["pid"] = pid
-                    
-                    # Get CPU & Uptime via psutil
                     try:
                         p = psutil.Process(int(pid_str))
-                        # cpu_percent needs to be called once, then again to get interval. 
-                        # But simpler is just 0.0 or last value. 
-                        # For 'instant' reading without blocking, we might get 0.0 often.
-                        # We used p.cpu_percent() (blocking) or p.cpu_percent(interval=None)
                         item["cpu"] = f"{p.cpu_percent(interval=None)}%"
                         
-                        # Calculate uptime
                         create_time = datetime.fromtimestamp(p.create_time())
                         uptime_duration = datetime.now() - create_time
                         
-                        # Format uptime friendly
                         days = uptime_duration.days
                         hours = uptime_duration.seconds // 3600
                         item["uptime"] = f"{days}d {hours}h"
@@ -439,22 +365,13 @@ def get_services_status():
     return results
 
 def get_system_health():
-    """Retrieves real-time system metrics (Simulated for this demo)"""
-    
-    # Simulate CPU/RAM
     ram_total = 16.0
     ram_used = 8.4 + random.uniform(-0.5, 0.5)
     ram_percent = (ram_used / ram_total) * 100
     
     cpu_usage = int(12 + random.uniform(-5, 10))
-    
-    # Simulate Load Avg
     load_avg = 0.45 + random.uniform(0, 0.2)
-    
-    # Simulate Uptime
     uptime = "14d 2h 12m"
-    
-    # Simulate Network
     net_in = int(120 + random.uniform(-20, 30))
     net_out = int(50 + random.uniform(-10, 10))
     
@@ -473,50 +390,3 @@ def get_system_health():
         "network": {"in": net_in, "out": net_out},
         "services": services
     }
-
-def get_hotlink_config():
-    """Reads hotlink configuration from JSON"""
-    default_config = {
-        "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
-        "domains": ["google.com", "bing.com", "yahoo.com"]
-    }
-    
-    if os.path.exists(HOTLINK_CONFIG_FILE):
-        try:
-            with open(HOTLINK_CONFIG_FILE, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error reading hotlink config: {e}")
-            
-    return default_config
-
-def save_hotlink_config(config: dict):
-    """Saves hotlink config and generates Nginx directives"""
-    try:
-        # 1. Save JSON for UI
-        with open(HOTLINK_CONFIG_FILE, "w") as f:
-            json.dump(config, f, indent=4)
-            
-        # 2. Generate Nginx Config (Hotlink Protection)
-        ext_str = "|".join(config.get("extensions", []))
-        domains_str = " ".join(config.get("domains", []))
-        
-        nginx_conf = f"""# Auto-generated Hotlink Rules
-# Do not edit manually
-
-location ~ \.({ext_str})$ {{
-    valid_referers none blocked server_names {domains_str};
-    if ($invalid_referer) {{
-        return 403;
-    }}
-}}
-"""
-        HOTLINK_NGINX_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "hotlink.conf")
-        with open(HOTLINK_NGINX_FILE, "w") as f:
-            f.write(nginx_conf)
-
-        restart_nginx()
-        return {"status": "success", "message": "Hotlink configuration saved and applied."}
-        
-    except Exception as e:
-        return {"status": "error", "message": str(e)}

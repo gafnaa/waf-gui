@@ -19,6 +19,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.db import init_db
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
 # --- Public Endpoints ---
 
 @app.get("/api/health")
@@ -27,8 +33,8 @@ def health_check():
 
 @app.post("/api/login")
 def login(login_data: LoginRequest):
-    user = auth_service.users_db.get(login_data.username)
-    if not user or not auth_service.verify_password(login_data.password, user['hashed_password']):
+    user = auth_service.authenticate_user(login_data.username, login_data.password)
+    if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
     access_token = auth_service.create_access_token(data={"sub": user['username']})
