@@ -49,6 +49,7 @@ export const restartNginx = () => api.post('/system/restart');
 export const getSystemStatus = () => api.get('/system/status');
 export const clearWafCache = () => api.post('/system/clear-cache');
 export const manageService = (serviceName, action) => api.post(`/system/services/${serviceName}/${action}`);
+export const factoryReset = () => api.post('/system/factory-reset');
 export const getLogs = (params) => api.get('/logs', { params });
 
 // User Management

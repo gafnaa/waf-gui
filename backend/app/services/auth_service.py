@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import get_settings
+from app.db import get_db_connection
 
 settings = get_settings()
 
@@ -18,38 +19,29 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
-USERS_FILE = "users.json"
-
 def get_password_hash(password):
     return pwd_context.hash(password)
-
-def load_users():
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, "r") as f:
-                return json.load(f)
-        except:
-            pass
-    
-    # Default Admin (admin / admin123)
-    return {
-        "admin": {
-            "username": "admin",
-            "full_name": "Administrator",
-            "hashed_password": get_password_hash("admin123")
-        }
-    }
-
-def save_users(db):
-    with open(USERS_FILE, "w") as f:
-        json.dump(db, f, indent=4)
-
-# Global memory cache of users
-users_db = load_users()
 
 def verify_password(plain_password, hashed_password):
     if not hashed_password: return False
     return pwd_context.verify(plain_password, hashed_password)
+
+def get_user_by_username(username: str):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+    return None
+
+def authenticate_user(username, password):
+    user = get_user_by_username(username)
+    if not user:
+        return False
+    if not verify_password(password, user['hashed_password']):
+        return False
+    return user
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -72,28 +64,34 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    user = users_db.get(username)
+    user = get_user_by_username(username)
     if user is None:
         raise credentials_exception
     return user
 
 # User Management Functions
 def update_profile(username: str, full_name: str):
-    if username not in users_db:
+    user = get_user_by_username(username)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    users_db[username]["full_name"] = full_name
-    save_users(users_db)
-    return users_db[username]
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET full_name = ? WHERE username = ?", (full_name, username))
+        conn.commit()
+    return get_user_by_username(username)
 
 def change_password(username: str, current_password: str, new_password: str):
-    if username not in users_db:
+    user = get_user_by_username(username)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    user = users_db[username]
     if not verify_password(current_password, user["hashed_password"]):
         raise HTTPException(status_code=400, detail="Incorrect password")
     
-    users_db[username]["hashed_password"] = get_password_hash(new_password)
-    save_users(users_db)
+    new_hash = get_password_hash(new_password)
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET hashed_password = ? WHERE username = ?", (new_hash, username))
+        conn.commit()
     return True
