@@ -254,12 +254,14 @@ def clear_cache():
         return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
 
 def manage_service(service_name: str, action: str):
-    ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban"]
+    ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban", "modsec_crs", "crs"]
     SERVICE_MAP = {
         "ssh": "sshd",
         "nginx": "nginx",
         "postgresql": "postgresql",
-        "fail2ban": "fail2ban"
+        "fail2ban": "fail2ban",
+        "modsec_crs": "nginx", # ModSec is part of Nginx
+        "crs": "nginx"
     }
 
     if service_name not in ALLOWED_SERVICES:
