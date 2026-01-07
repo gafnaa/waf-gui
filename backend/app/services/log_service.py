@@ -453,25 +453,203 @@ def parse_single_line_safely(line, index, total_lines):
     except:
         return None
 
-def export_logs_csv(limit: int = 1000) -> str:
-    """Generates a CSV string of the latest logs"""
-    output = ["Timestamp,IP Address,Country,Method,Path,Status Code,Attack Type"]
-    
-    if os.path.exists(settings.ACCESS_LOG_PATH):
-        try:
-            with open(settings.ACCESS_LOG_PATH, "r") as f:
-                lines = f.readlines()
-                # Process latest N lines in reverse
-                count = 0
-                for i in range(len(lines) - 1, -1, -1):
-                    if count >= limit: break
-                    
-                    parsed = parse_single_line_safely(lines[i], i, len(lines))
-                    if parsed:
-                        row = f"{parsed.timestamp},{parsed.source_ip},{parsed.country},{parsed.method},{parsed.path},{parsed.status_code},{parsed.attack_type}"
-                        output.append(row)
-                        count += 1
-        except Exception as e:
-            output.append(f"Error reading logs: {str(e)}")
-            
     return "\n".join(output)
+
+def generate_html_report() -> str:
+    """Generates a rich HTML report with charts and stats"""
+    import json
+    
+    # 1. Fetch Data
+    stats = analyze_logs("24h") # Default to 24h for report
+    # Get last 50 logs for table
+    logs_data = get_waf_logs(limit=50, time_range="Last 24h")
+    logs = logs_data.data
+    
+    # 2. Prepare Chart Data
+    traffic_labels = [b.time for b in stats.traffic_chart]
+    valid_data = [b.valid for b in stats.traffic_chart]
+    blocked_data = [b.blocked for b in stats.traffic_chart]
+    
+    # Attack Distribution
+    attack_counts = {m.title: m.count for m in stats.attack_modules if m.count > 0}
+    atk_labels = list(attack_counts.keys())
+    atk_values = list(attack_counts.values())
+    
+    # 3. Construct HTML (Embedded CSS/JS for standalone portability)
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WAF Security Report</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            @media print {{
+                .no-print {{ display: none; }}
+                .page-break {{ page-break-before: always; }}
+            }}
+            body {{ font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }}
+        </style>
+    </head>
+    <body class="bg-slate-50 text-slate-900 p-8 md:p-12 max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-12 border-b border-slate-200 pb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">WAF Security Report</h1>
+                <p class="text-slate-500">Generated on {datetime.datetime.now().strftime("%d %B %Y, %H:%M:%S")}</p>
+                <div class="mt-4 flex gap-4">
+                    <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-bold">System {stats.system_status}</span>
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Scope: Last 24 Hours</span>
+                </div>
+            </div>
+            <div class="text-right no-print">
+                <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">
+                    Download / Print PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <span class="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+            Executive Summary
+        </h2>
+        <div class="grid grid-cols-4 gap-6 mb-12">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Total Requests</div>
+                <div class="text-3xl font-bold text-slate-900">{stats.total_requests}</div>
+            </div>
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Threats Blocked</div>
+                <div class="text-3xl font-bold text-rose-600">{stats.blocked_attacks}</div>
+            </div>
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Avg Latency</div>
+                <div class="text-3xl font-bold text-blue-600">{stats.avg_latency}</div>
+            </div>
+             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">CPU Load</div>
+                <div class="text-3xl font-bold text-purple-600">{stats.cpu_load}</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-3 gap-8 mb-12">
+            <!-- Traffic Chart -->
+            <div class="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-6">Traffic Volume (24h)</h3>
+                <div class="h-64">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Attack Type Chart -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-6">Threat Distribution</h3>
+                <div class="h-64">
+                    <canvas id="attackChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- Top Logs Table -->
+         <h2 class="text-xl font-bold mb-6 flex items-center gap-2 mt-8">
+            <span class="w-1.5 h-6 bg-rose-600 rounded-full"></span>
+            Recent Security Events
+        </h2>
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-3 font-bold text-slate-600">Time</th>
+                        <th class="px-6 py-3 font-bold text-slate-600">IP Address</th>
+                        <th class="px-6 py-3 font-bold text-slate-600">Country</th>
+                        <th class="px-6 py-3 font-bold text-slate-600">Attack Type</th>
+                        <th class="px-6 py-3 font-bold text-slate-600">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {''.join(f'''
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-3 font-mono text-slate-600">{log.timestamp}</td>
+                        <td class="px-6 py-3 font-mono">{log.source_ip}</td>
+                        <td class="px-6 py-3">{log.country}</td>
+                        <td class="px-6 py-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-bold {'bg-rose-100 text-rose-700' if log.attack_type != 'Safe' else 'bg-slate-100 text-slate-600'}">
+                                {log.attack_type}
+                            </span>
+                        </td>
+                         <td class="px-6 py-3">
+                            <span class="font-bold {'text-rose-600' if log.status_code in [403, 401] else 'text-emerald-600'}">
+                                {'BLOCKED' if log.status_code in [403, 401] else 'ALLOWED'}
+                            </span>
+                        </td>
+                    </tr>
+                    ''' for log in logs)}
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            // Traffic Chart
+            const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+            new Chart(ctxTraffic, {{
+                type: 'line',
+                data: {{
+                    labels: {json.dumps(traffic_labels)},
+                    datasets: [
+                        {{
+                            label: 'Valid Requests',
+                            data: {valid_data},
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }},
+                        {{
+                            label: 'Blocked Threats',
+                            data: {blocked_data},
+                            borderColor: '#e11d48',
+                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }}
+                    ]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{ legend: {{ position: 'top' }} }},
+                    scales: {{ y: {{ beginAtZero: true }} }}
+                }}
+            }});
+
+            // Attack Chart
+            const ctxAttack = document.getElementById('attackChart').getContext('2d');
+            new Chart(ctxAttack, {{
+                type: 'doughnut',
+                data: {{
+                    labels: {json.dumps(atk_labels)},
+                    datasets: [{{
+                        data: {atk_values},
+                        backgroundColor: [
+                            '#e11d48', '#f59e0b', '#8b5cf6', '#10b981', '#64748b'
+                        ]
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{ legend: {{ position: 'bottom' }} }}
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+    return html

@@ -226,6 +226,7 @@ const OverviewPage = () => {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('Live');
+    const [showExportMenu, setShowExportMenu] = useState(false);
     const { theme } = useTheme();
 
     useEffect(() => {
@@ -253,14 +254,16 @@ const OverviewPage = () => {
         return () => clearInterval(interval);
     }, [timeRange]);
 
-    const handleExport = async () => {
+    const handleExport = async (format = 'html') => {
+        setShowExportMenu(false);
         try {
-            const response = await exportReport();
+            const response = await exportReport(format);
             // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', 'waf_report.csv');
+            const extension = format === 'csv' ? 'csv' : 'html';
+            link.setAttribute('download', `waf_security_report.${extension}`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -318,20 +321,66 @@ const OverviewPage = () => {
                             </button>
                         ))}
                     </div>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20"
-                        onClick={handleExport}
-                    >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Export Report</span>
-                    </Button>
+                    
+                    <div className="relative">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20"
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Export Report</span>
+                        </Button>
+                        
+                        {showExportMenu && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border dark:border-slate-800 border-slate-200 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
+                                <div className="p-1">
+                                    <button 
+                                      onClick={() => handleExport('html')}
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                    >
+                                        <div className="w-6 h-6 flex items-center justify-center bg-orange-100 dark:bg-orange-500/20 text-orange-600 rounded">
+                                            <span className="font-bold text-[10px]">HTML</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">HTML Report</p>
+                                            <p className="text-[10px] opacity-70">Interactive charts</p>
+                                        </div>
+                                    </button>
+                                    <button 
+                                      onClick={() => handleExport('html')}
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                    >
+                                        <div className="w-6 h-6 flex items-center justify-center bg-rose-100 dark:bg-rose-500/20 text-rose-600 rounded">
+                                            <span className="font-bold text-[10px]">PDF</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">PDF / Print</p>
+                                            <p className="text-[10px] opacity-70">Printable format</p>
+                                        </div>
+                                    </button>
+                                     <button 
+                                      onClick={() => handleExport('csv')}
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                    >
+                                        <div className="w-6 h-6 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 rounded">
+                                            <span className="font-bold text-[10px]">CSV</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">Raw Data</p>
+                                            <p className="text-[10px] opacity-70">Spreadsheet export</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" onClick={() => setShowExportMenu(false)}>
                 <StatCard 
                     title="Total Requests" 
                     value={stats.total_requests} 

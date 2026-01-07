@@ -60,9 +60,14 @@ def get_stats(range: str = "live", user = Depends(auth_service.get_current_user)
     return log_service.analyze_logs(range)
 
 @app.get("/api/reports/export")
-def export_report(user = Depends(auth_service.get_current_user)):
-    csv_content = log_service.export_logs_csv()
-    return Response(content=csv_content, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=waf_report.csv"})
+def export_report(format: str = "html", user = Depends(auth_service.get_current_user)):
+    if format == "csv":
+        csv_content = log_service.export_logs_csv()
+        return Response(content=csv_content, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=waf_report.csv"})
+    else:
+        # Default to HTML
+        html_content = log_service.generate_html_report()
+        return Response(content=html_content, media_type="text/html", headers={"Content-Disposition": "attachment; filename=waf_report.html"})
 
 @app.get("/api/waf/rules", response_model=List[WafRuleStatus])
 def get_rules(user = Depends(auth_service.get_current_user)):
