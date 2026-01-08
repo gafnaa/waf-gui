@@ -519,7 +519,7 @@ def generate_html_report(time_range: str = "24h") -> str:
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.tailwindcss.com/3.3.5"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <!-- Datalabels Plugin for clarity -->
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -552,12 +552,7 @@ def generate_html_report(time_range: str = "24h") -> str:
                     </div>
                 </div>
             </div>
-            <div class="text-right no-print flex gap-3">
-                 <button onclick="window.print()" class="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Save as PDF
-                </button>
-            </div>
+
         </div>
 
         <!-- Executive Summary -->
@@ -682,15 +677,16 @@ def generate_html_report(time_range: str = "24h") -> str:
                         <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider text-right">Status</th>
                     </tr>
                 </thead>
+    
                 <tbody class="divide-y divide-slate-100">
                     {''.join(f'''
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-3 font-mono text-slate-500 whitespace-nowrap">{log.timestamp}</td>
-                        <td class="px-6 py-3 font-mono text-slate-700">{log.source_ip}</td>
-                        <td class="px-6 py-3 text-slate-600">{log.country}</td>
+                        <td class="px-6 py-3 font-mono text-slate-700">{__import__('html').escape(log.source_ip or "")}</td>
+                        <td class="px-6 py-3 text-slate-600">{__import__('html').escape(log.country or "")}</td>
                         <td class="px-6 py-3">
                             <span class="px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide {'bg-rose-100 text-rose-700 border border-rose-200' if log.attack_type != 'Safe' else 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                                {log.attack_type}
+                                {__import__('html').escape(log.attack_type or "")}
                             </span>
                         </td>
                          <td class="px-6 py-3 text-right">
@@ -699,7 +695,7 @@ def generate_html_report(time_range: str = "24h") -> str:
                             </span>
                         </td>
                     </tr>
-                    ''' for log in logs[:50])}
+                    ''' for log in logs)}
                 </tbody>
             </table>
         </div>
