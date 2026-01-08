@@ -67,8 +67,8 @@ def init_db():
         if not cursor.fetchone():
             # hash for 'admin123' generated via passlib (bcrypt)
             # using a hardcoded one for now to avoid circular import, or better, import helper
-            # $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW = admin123
-            default_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW" 
+            # $2b$12$6pQJvvo1MFJaf5AnNVdtKOLkwNLdjD6vnU6AI/X0aaeFgZ4tZlhOK = admin123
+            default_hash = "$2b$12$6pQJvvo1MFJaf5AnNVdtKOLkwNLdjD6vnU6AI/X0aaeFgZ4tZlhOK" 
             cursor.execute(
                 "INSERT INTO users (username, full_name, hashed_password) VALUES (?, ?, ?)",
                 ("admin", "Administrator", default_hash)

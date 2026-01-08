@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -58,6 +58,16 @@ def update_password(req: PasswordChangeRequest, user = Depends(auth_service.get_
 @app.get("/api/stats", response_model=StatsResponse)
 def get_stats(range: str = "live", user = Depends(auth_service.get_current_user)):
     return log_service.analyze_logs(range)
+
+@app.get("/api/reports/export")
+def export_report(format: str = "html", time_range: str = "24h", user = Depends(auth_service.get_current_user)):
+    if format == "csv":
+        csv_content = log_service.export_logs_csv()
+        return Response(content=csv_content, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=waf_report.csv"})
+    else:
+        # Default to HTML
+        html_content = log_service.generate_html_report(time_range)
+        return Response(content=html_content, media_type="text/html", headers={"Content-Disposition": "attachment; filename=waf_report.html"})
 
 @app.get("/api/waf/rules", response_model=List[WafRuleStatus])
 def get_rules(user = Depends(auth_service.get_current_user)):

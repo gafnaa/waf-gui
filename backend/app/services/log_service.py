@@ -44,6 +44,10 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         window_size = datetime.timedelta(hours=24)
         step = datetime.timedelta(hours=1) # 24 points
         label_fmt = "%H:00"
+    elif time_range == "3d":
+        window_size = datetime.timedelta(days=3)
+        step = datetime.timedelta(hours=3) # 24 points
+        label_fmt = "%d %b %H:%M"
     elif time_range == "7d":
         window_size = datetime.timedelta(days=7)
         step = datetime.timedelta(days=1) # 7 points
@@ -452,3 +456,353 @@ def parse_single_line_safely(line, index, total_lines):
         )
     except:
         return None
+
+    return "\n".join(output)
+
+    return "\n".join(output)
+
+def generate_html_report(time_range: str = "24h") -> str:
+    """Generates a rich HTML report with charts and stats"""
+    import json
+    
+    # Map friendly range to log_service args
+    log_range_map = {
+        "24h": "Last 24h",
+        "3d": "Last 3d",
+        "7d": "Last 7d"
+    }
+    log_range = log_range_map.get(time_range, "Last 24h")
+    
+    # 1. Fetch Data
+    stats = analyze_logs(time_range) 
+    # Get last 200 logs for analysis
+    logs_data = get_waf_logs(limit=200, time_range=log_range)
+    logs = logs_data.data
+    
+    # 2. Additional Analysis (Local Aggregation from sampled logs)
+    # Top IPs
+    ip_counts = defaultdict(int)
+    path_counts = defaultdict(int)
+    country_counts = defaultdict(int)
+    
+    for l in logs:
+        if l.status_code in [403, 401]:
+            ip_counts[l.source_ip] += 1
+            path_counts[l.path] += 1
+            country_counts[l.country] += 1
+
+    top_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_paths = sorted(path_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_countries = sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    # Chart Data
+    traffic_labels = [b.time for b in stats.traffic_chart]
+    valid_data = [b.valid for b in stats.traffic_chart]
+    blocked_data = [b.blocked for b in stats.traffic_chart]
+    
+    # Attack Distribution
+    attack_counts = {m.title: m.count for m in stats.attack_modules if m.count > 0}
+    total_attacks = sum(attack_counts.values()) or 1
+    
+    # Append percentage to labels
+    atk_labels = [f"{k} ({round(v/total_attacks*100)}%)" for k, v in attack_counts.items()]
+    atk_values = list(attack_counts.values())
+    
+    # 3. Construct HTML
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WAF Security Report</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com/3.3.5"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Datalabels Plugin for clarity -->
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+        <style>
+            @media print {{
+                .no-print {{ display: none !important; }}
+                .page-break {{ page-break-before: always; }}
+                body {{ background: white; }}
+                @page {{ margin: 0; }}
+                body {{ margin: 1.6cm; }}
+            }}
+            body {{ font-family: 'Inter', sans-serif; }}
+        </style>
+    </head>
+    <body class="bg-slate-50 text-slate-900 p-8 md:p-12 max-w-7xl mx-auto">
+        <!-- ... (Header and Exec Summary remain roughly same, skipping lines in replace block if possible) ... -->
+        
+        <!-- ... Header ... -->
+        <div class="flex justify-between items-start mb-12 border-b border-slate-200 pb-8">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-600 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">WAF Security Report</h1>
+                    <p class="text-slate-500 font-medium">Generated on {datetime.datetime.now().strftime("%d %B %Y, %H:%M")}</p>
+                    <div class="mt-4 flex gap-4">
+                        <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-bold">System {stats.system_status}</span>
+                        <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Scope: {log_range}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="mb-12">
+            <h2 class="text-lg font-bold mb-6 flex items-center gap-2 text-slate-800">
+                <span class="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                Executive Summary
+            </h2>
+            <div class="grid grid-cols-4 gap-6">
+                <!-- ... (Cards remain same) ... -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Total Requests</div>
+                    <div class="text-3xl font-bold text-slate-900">{stats.total_requests}</div>
+                    <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Threats Blocked</div>
+                    <div class="text-3xl font-bold text-rose-600 dark:text-rose-500">{stats.blocked_attacks}</div>
+                    <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-rose-600">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Avg Latency</div>
+                    <div class="text-3xl font-bold text-blue-600">{stats.avg_latency}</div>
+                     <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-blue-600">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Attack Ratio</div>
+                    <div class="text-3xl font-bold text-orange-600">{round((stats.blocked_attacks / stats.total_requests * 100), 2) if stats.total_requests > 0 else 0}%</div>
+                     <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-orange-600">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-2 gap-8 mb-12">
+            <!-- Traffic Chart -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-slate-800">Traffic Volume ({time_range})</h3>
+                    <div class="flex gap-4 text-xs font-medium text-slate-500">
+                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Valid</span>
+                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Blocked</span>
+                    </div>
+                </div>
+                <div class="h-64">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Attack Type Chart -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-6">Threat Distribution</h3>
+                <div class="h-64 relative">
+                    <canvas id="attackChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Intelligence -->
+        <div class="grid grid-cols-2 gap-8 mb-12 page-break">
+            
+            <!-- Top Attacking IPs -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-sm">Top Attacking Sources</h3>
+                </div>
+                <table class="w-full text-left text-sm">
+                    <tbody class="divide-y divide-slate-100">
+                        {''.join(f'''
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-6 py-3 font-mono text-slate-600">{ip}</td>
+                            <td class="px-6 py-3 text-right">
+                                <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-xs font-bold">{count} Hits</span>
+                            </td>
+                        </tr>
+                        ''' for ip, count in top_ips) if top_ips else '<tr><td class="p-6 text-center text-slate-400">No data available</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Top Targeted Paths -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-sm">Top Targeted Paths</h3>
+                </div>
+                <table class="w-full text-left text-sm">
+                    <tbody class="divide-y divide-slate-100">
+                        {''.join(f'''
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-6 py-3 font-mono text-slate-600 break-all">{path}</td>
+                            <td class="px-6 py-3 text-right">
+                                <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">{count}</span>
+                            </td>
+                        </tr>
+                        ''' for path, count in top_paths) if top_paths else '<tr><td class="p-6 text-center text-slate-400">No data available</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Logs Table -->
+         <h2 class="text-lg font-bold mb-6 flex items-center gap-2 mt-8 text-slate-800">
+            <span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+            Recent Security Events
+        </h2>
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider">Source</th>
+                        <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider">Country</th>
+                        <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider">Attack Type</th>
+                        <th class="px-6 py-3 font-bold text-slate-600 text-xs uppercase tracking-wider text-right">Status</th>
+                    </tr>
+                </thead>
+    
+                <tbody class="divide-y divide-slate-100">
+                    {''.join(f'''
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-mono text-slate-500 whitespace-nowrap">{log.timestamp}</td>
+                        <td class="px-6 py-3 font-mono text-slate-700">{__import__('html').escape(log.source_ip or "")}</td>
+                        <td class="px-6 py-3 text-slate-600">{__import__('html').escape(log.country or "")}</td>
+                        <td class="px-6 py-3">
+                            <span class="px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide {'bg-rose-100 text-rose-700 border border-rose-200' if log.attack_type != 'Safe' else 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                {__import__('html').escape(log.attack_type or "")}
+                            </span>
+                        </td>
+                         <td class="px-6 py-3 text-right">
+                            <span class="font-bold text-xs {'text-rose-600' if log.status_code in [403, 401] else 'text-emerald-600'}">
+                                {'BLOCKED' if log.status_code in [403, 401] else 'ALLOWED'}
+                            </span>
+                        </td>
+                    </tr>
+                    ''' for log in logs)}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center text-slate-400 text-xs mt-12 mb-8">
+            <p>End of Report • {datetime.datetime.now().year} © Gafnaa WAF Dashboard</p>
+        </div>
+
+        <script>
+            // Register DataLabels
+            Chart.register(ChartDataLabels);
+
+            // Traffic Chart
+            const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+            new Chart(ctxTraffic, {{
+                type: 'line',
+                data: {{
+                    labels: {json.dumps(traffic_labels)},
+                    datasets: [
+                        {{
+                            label: 'Valid Requests',
+                            data: {valid_data},
+                            borderColor: '#3b82f6',
+                            backgroundColor: (context) => {{
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+                                gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                                return gradient;
+                            }},
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            datalabels: {{ display: false }}
+                        }},
+                        {{
+                            label: 'Blocked Threats',
+                            data: {blocked_data},
+                            borderColor: '#e11d48',
+                            backgroundColor: (context) => {{
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                                gradient.addColorStop(0, 'rgba(225, 29, 72, 0.2)');
+                                gradient.addColorStop(1, 'rgba(225, 29, 72, 0)');
+                                return gradient;
+                            }},
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            datalabels: {{ display: false }}
+                        }}
+                    ]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{ legend: {{ display: false }} }},
+                    interaction: {{ mode: 'index', intersect: false }},
+                    scales: {{ 
+                        y: {{ beginAtZero: true, grid: {{ color: '#f1f5f9' }} }},
+                        x: {{ grid: {{ display: false }} }}
+                    }}
+                }}
+            }});
+
+            // Attack Chart (Pie with Percentages)
+            const ctxAttack = document.getElementById('attackChart').getContext('2d');
+            new Chart(ctxAttack, {{
+                type: 'pie',
+                data: {{
+                    labels: {json.dumps(atk_labels)},
+                    datasets: [{{
+                        data: {atk_values},
+                        backgroundColor: [
+                            '#e11d48', '#f59e0b', '#8b5cf6', '#10b981', '#64748b'
+                        ],
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{ 
+                        legend: {{ 
+                            position: 'bottom', 
+                            labels: {{ usePointStyle: true, boxWidth: 8, padding: 20 }} 
+                        }},
+                        datalabels: {{
+                            color: '#fff',
+                            font: {{ weight: 'bold', size: 10 }},
+                            formatter: (value, ctx) => {{
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => {{ sum += data; }});
+                                let percentage = (value*100 / sum).toFixed(1)+"%";
+                                // Only show if substantial
+                                return (value*100 / sum) > 5 ? percentage : '';
+                            }}
+                        }}
+                    }}
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+    return html

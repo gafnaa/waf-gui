@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import html2pdf from 'html2pdf.js';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
@@ -26,11 +27,14 @@ import {
   ArrowRight,
   Loader2,
   FileWarning,
-  Link
+  Link,
+  FileCode,
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { getStats } from "../services/api";
+import { getStats, exportReport } from "../services/api";
 import { useTheme } from '../context/ThemeContext';
 
 // --- Hooks & Components for Animation ---
@@ -226,6 +230,9 @@ const OverviewPage = () => {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('Live');
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const [exportTimeRange, setExportTimeRange] = useState('24h');
+    const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '' }
     const { theme } = useTheme();
 
     useEffect(() => {
@@ -252,6 +259,42 @@ const OverviewPage = () => {
         const interval = setInterval(fetchData, 10000);
         return () => clearInterval(interval);
     }, [timeRange]);
+
+    const handleExport = async (format = 'html') => {
+        setShowExportMenu(false);
+        setNotification({ type: 'success', message: `${format.toUpperCase()} report export started...` });
+        
+        // Auto hide after 3.5s
+        setTimeout(() => setNotification(null), 3500);
+
+        try {
+            const response = await exportReport(format, exportTimeRange);
+            const blob = new Blob([response.data], { type: format === 'pdf' ? 'text/html' : (format === 'csv' ? 'text/csv' : 'text/html') });
+            const url = window.URL.createObjectURL(blob);
+            
+
+
+            const link = document.createElement('a');
+            link.href = url;
+            let extension = 'html';
+            if (format === 'csv') extension = 'csv';
+
+            link.setAttribute('download', `waf_security_report.${extension}`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            
+            // Cleanup
+            setTimeout(() => window.URL.revokeObjectURL(url), 100);
+
+
+
+        } catch (err) {
+            console.error("Export failed:", err);
+            setNotification({ type: 'error', message: "Failed to export report" });
+            setTimeout(() => setNotification(null), 3000);
+        }
+    };
 
     if (loading && !stats) {
         return (
@@ -281,6 +324,31 @@ const OverviewPage = () => {
     return (
         <div className={`space-y-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
             
+             {/* Notification Toast */}
+             {notification && (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 animate-in fade-in slide-in-from-top-4 zoom-in-95 duration-200">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${notification.type === 'success' ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-emerald-500/20' : 'bg-gradient-to-tr from-rose-500 to-red-500 text-white shadow-rose-500/20'}`}>
+                         {notification.type === 'success' ? <Shield className="w-4 h-4 fill-current" /> : <FileWarning className="w-4 h-4" />}
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-white tracking-tight">
+                            {notification.type === 'success' ? 'System Notification' : 'Action Failed'}
+                        </p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {notification.message}
+                        </p>
+                    </div>
+                    <div className="pl-2 border-l border-slate-200 dark:border-slate-800 ml-1">
+                        <button onClick={() => setNotification(null)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                             <span className="sr-only">Close</span>
+                             <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex items-center justify-center">
+                                 <span className="text-[10px] font-bold text-slate-500 dark:text-white leading-none mb-0.5">×</span>
+                             </div>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Top Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -300,15 +368,72 @@ const OverviewPage = () => {
                             </button>
                         ))}
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20">
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Export Report</span>
-                    </Button>
+                    
+                    <div className="relative">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 gap-2 bg-blue-600 border-blue-600 hover:bg-blue-500 hover:border-blue-500 text-white shadow shadow-blue-900/20"
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Export Report</span>
+                        </Button>
+                        
+                        {showExportMenu && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border dark:border-slate-800 border-slate-200 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden text-left" onClick={(e) => e.stopPropagation()}>
+                                <div className="p-3 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-1">Report Period</label>
+                                    <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 shadow-sm border border-slate-200 dark:border-slate-700">
+                                        {['Today', '3d', '7d'].map((label) => {
+                                             const val = label === 'Today' ? '24h' : label;
+                                             return (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setExportTimeRange(val)}
+                                                    className={`flex-1 text-[10px] font-bold py-1.5 rounded-md transition-all ${exportTimeRange === val ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-400'}`}
+                                                >
+                                                    {label}
+                                                </button>
+                                             );
+                                        })}
+                                    </div>
+                                </div>
+                                <div className="p-1">
+                                    <button 
+                                      onClick={() => handleExport('html')}
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
+                                    >
+                                        <div className="w-8 h-8 flex items-center justify-center bg-orange-100 dark:bg-orange-500/10 text-orange-600 group-hover:bg-orange-200 dark:group-hover:bg-orange-500/20 transition-colors rounded-lg">
+                                            <FileCode className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">HTML Report</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Interactive charts & visuals</p>
+                                        </div>
+                                    </button>
+
+                                     <button 
+                                      onClick={() => handleExport('csv')}
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
+                                    >
+                                        <div className="w-8 h-8 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/20 transition-colors rounded-lg">
+                                            <FileSpreadsheet className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">CSV Export</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Raw logs data</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" onClick={() => setShowExportMenu(false)}>
                 <StatCard 
                     title="Total Requests" 
                     value={stats.total_requests} 
