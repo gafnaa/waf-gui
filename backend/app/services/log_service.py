@@ -488,8 +488,12 @@ def generate_html_report() -> str:
     valid_data = [b.valid for b in stats.traffic_chart]
     blocked_data = [b.blocked for b in stats.traffic_chart]
     
+    # Attack Distribution
     attack_counts = {m.title: m.count for m in stats.attack_modules if m.count > 0}
-    atk_labels = list(attack_counts.keys())
+    total_attacks = sum(attack_counts.values()) or 1
+    
+    # Append percentage to labels
+    atk_labels = [f"{k} ({round(v/total_attacks*100)}%)" for k, v in attack_counts.items()]
     atk_values = list(attack_counts.values())
     
     # 3. Construct HTML
@@ -505,6 +509,8 @@ def generate_html_report() -> str:
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Datalabels Plugin for clarity -->
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
         <style>
             @media print {{
                 .no-print {{ display: none !important; }}
@@ -515,8 +521,9 @@ def generate_html_report() -> str:
         </style>
     </head>
     <body class="bg-slate-50 text-slate-900 p-8 md:p-12 max-w-7xl mx-auto">
+        <!-- ... (Header and Exec Summary remain roughly same, skipping lines in replace block if possible) ... -->
         
-        <!-- Header -->
+        <!-- ... Header ... -->
         <div class="flex justify-between items-start mb-12 border-b border-slate-200 pb-8">
             <div class="flex items-center gap-4">
                 <div class="p-3 bg-blue-600 rounded-lg">
@@ -542,11 +549,12 @@ def generate_html_report() -> str:
                 Executive Summary
             </h2>
             <div class="grid grid-cols-4 gap-6">
+                <!-- ... (Cards remain same) ... -->
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
                     <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Total Requests</div>
                     <div class="text-3xl font-bold text-slate-900">{stats.total_requests}</div>
                     <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
@@ -563,20 +571,20 @@ def generate_html_report() -> str:
                          <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
                 </div>
-                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">System Status</div>
-                    <div class="text-3xl font-bold text-emerald-600">{stats.system_status}</div>
-                     <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-emerald-600">
-                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Attack Ratio</div>
+                    <div class="text-3xl font-bold text-orange-600">{round((stats.blocked_attacks / stats.total_requests * 100), 2) if stats.total_requests > 0 else 0}%</div>
+                     <div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-orange-600">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Charts Section -->
-        <div class="grid grid-cols-3 gap-8 mb-12">
+        <div class="grid grid-cols-2 gap-8 mb-12">
             <!-- Traffic Chart -->
-            <div class="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-slate-800">Traffic Volume (24h)</h3>
                     <div class="flex gap-4 text-xs font-medium text-slate-500">
@@ -594,10 +602,6 @@ def generate_html_report() -> str:
                 <h3 class="font-bold text-slate-800 mb-6">Threat Distribution</h3>
                 <div class="h-64 relative">
                     <canvas id="attackChart"></canvas>
-                     <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                        <span class="text-2xl font-bold text-slate-800">{stats.blocked_attacks}</span>
-                        <span class="text-xs text-slate-500 uppercase">Threats</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -687,6 +691,9 @@ def generate_html_report() -> str:
         </div>
 
         <script>
+            // Register DataLabels
+            Chart.register(ChartDataLabels);
+
             // Traffic Chart
             const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
             new Chart(ctxTraffic, {{
@@ -708,7 +715,8 @@ def generate_html_report() -> str:
                             fill: true,
                             tension: 0.4,
                             pointRadius: 0,
-                            pointHoverRadius: 4
+                            pointHoverRadius: 4,
+                            datalabels: {{ display: false }}
                         }},
                         {{
                             label: 'Blocked Threats',
@@ -724,7 +732,8 @@ def generate_html_report() -> str:
                             fill: true,
                             tension: 0.4,
                             pointRadius: 0,
-                            pointHoverRadius: 4
+                            pointHoverRadius: 4,
+                            datalabels: {{ display: false }}
                         }}
                     ]
                 }},
@@ -740,10 +749,10 @@ def generate_html_report() -> str:
                 }}
             }});
 
-            // Attack Chart
+            // Attack Chart (Pie with Percentages)
             const ctxAttack = document.getElementById('attackChart').getContext('2d');
             new Chart(ctxAttack, {{
-                type: 'doughnut',
+                type: 'pie',
                 data: {{
                     labels: {json.dumps(atk_labels)},
                     datasets: [{{
@@ -751,15 +760,31 @@ def generate_html_report() -> str:
                         backgroundColor: [
                             '#e11d48', '#f59e0b', '#8b5cf6', '#10b981', '#64748b'
                         ],
-                        borderWidth: 0,
-                        hoverOffset: 4
+                        borderWidth: 2,
+                        borderColor: 'white'
                     }}]
                 }},
                 options: {{
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '75%',
-                    plugins: {{ legend: {{ position: 'bottom', labels: {{ usePointStyle: true, boxWidth: 8 }} }} }}
+                    plugins: {{ 
+                        legend: {{ 
+                            position: 'bottom', 
+                            labels: {{ usePointStyle: true, boxWidth: 8, padding: 20 }} 
+                        }},
+                        datalabels: {{
+                            color: '#fff',
+                            font: {{ weight: 'bold', size: 10 }},
+                            formatter: (value, ctx) => {{
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => {{ sum += data; }});
+                                let percentage = (value*100 / sum).toFixed(1)+"%";
+                                // Only show if substantial
+                                return (value*100 / sum) > 5 ? percentage : '';
+                            }}
+                        }}
+                    }}
                 }}
             }});
         </script>
