@@ -26,7 +26,10 @@ import {
   ArrowRight,
   Loader2,
   FileWarning,
-  Link
+  Link,
+  FileCode,
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -227,6 +230,7 @@ const OverviewPage = () => {
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('Live');
     const [showExportMenu, setShowExportMenu] = useState(false);
+    const [exportTimeRange, setExportTimeRange] = useState('24h');
     const { theme } = useTheme();
 
     useEffect(() => {
@@ -257,7 +261,7 @@ const OverviewPage = () => {
     const handleExport = async (format = 'html') => {
         setShowExportMenu(false);
         try {
-            const response = await exportReport(format);
+            const response = await exportReport(format, exportTimeRange);
             // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
@@ -334,42 +338,59 @@ const OverviewPage = () => {
                         </Button>
                         
                         {showExportMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border dark:border-slate-800 border-slate-200 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
+                            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border dark:border-slate-800 border-slate-200 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden text-left" onClick={(e) => e.stopPropagation()}>
+                                <div className="p-3 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-1">Report Period</label>
+                                    <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 shadow-sm border border-slate-200 dark:border-slate-700">
+                                        {['Today', '3d', '7d'].map((label) => {
+                                             const val = label === 'Today' ? '24h' : label;
+                                             return (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setExportTimeRange(val)}
+                                                    className={`flex-1 text-[10px] font-bold py-1.5 rounded-md transition-all ${exportTimeRange === val ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-400'}`}
+                                                >
+                                                    {label}
+                                                </button>
+                                             );
+                                        })}
+                                    </div>
+                                </div>
                                 <div className="p-1">
                                     <button 
                                       onClick={() => handleExport('html')}
-                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
                                     >
-                                        <div className="w-6 h-6 flex items-center justify-center bg-orange-100 dark:bg-orange-500/20 text-orange-600 rounded">
-                                            <span className="font-bold text-[10px]">HTML</span>
+                                        <div className="w-8 h-8 flex items-center justify-center bg-orange-100 dark:bg-orange-500/10 text-orange-600 group-hover:bg-orange-200 dark:group-hover:bg-orange-500/20 transition-colors rounded-lg">
+                                            <FileCode className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className="font-semibold">HTML Report</p>
-                                            <p className="text-[10px] opacity-70">Interactive charts</p>
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">HTML Report</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Interactive charts & visuals</p>
                                         </div>
                                     </button>
                                     <button 
                                       onClick={() => handleExport('html')}
-                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
                                     >
-                                        <div className="w-6 h-6 flex items-center justify-center bg-rose-100 dark:bg-rose-500/20 text-rose-600 rounded">
-                                            <span className="font-bold text-[10px]">PDF</span>
+                                        <div className="w-8 h-8 flex items-center justify-center bg-rose-100 dark:bg-rose-500/10 text-rose-600 group-hover:bg-rose-200 dark:group-hover:bg-rose-500/20 transition-colors rounded-lg">
+                                            <Printer className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className="font-semibold">PDF / Print</p>
-                                            <p className="text-[10px] opacity-70">Printable format</p>
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Print / PDF</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Optimized for printing</p>
                                         </div>
                                     </button>
                                      <button 
                                       onClick={() => handleExport('csv')}
-                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2"
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
                                     >
-                                        <div className="w-6 h-6 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 rounded">
-                                            <span className="font-bold text-[10px]">CSV</span>
+                                        <div className="w-8 h-8 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/20 transition-colors rounded-lg">
+                                            <FileSpreadsheet className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className="font-semibold">Raw Data</p>
-                                            <p className="text-[10px] opacity-70">Spreadsheet export</p>
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">CSV Export</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Raw logs data</p>
                                         </div>
                                     </button>
                                 </div>

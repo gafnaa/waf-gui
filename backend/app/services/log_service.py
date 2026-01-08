@@ -44,6 +44,10 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
         window_size = datetime.timedelta(hours=24)
         step = datetime.timedelta(hours=1) # 24 points
         label_fmt = "%H:00"
+    elif time_range == "3d":
+        window_size = datetime.timedelta(days=3)
+        step = datetime.timedelta(hours=3) # 24 points
+        label_fmt = "%d %b %H:%M"
     elif time_range == "7d":
         window_size = datetime.timedelta(days=7)
         step = datetime.timedelta(days=1) # 7 points
@@ -457,14 +461,22 @@ def parse_single_line_safely(line, index, total_lines):
 
     return "\n".join(output)
 
-def generate_html_report() -> str:
+def generate_html_report(time_range: str = "24h") -> str:
     """Generates a rich HTML report with charts and stats"""
     import json
     
+    # Map friendly range to log_service args
+    log_range_map = {
+        "24h": "Last 24h",
+        "3d": "Last 3d",
+        "7d": "Last 7d"
+    }
+    log_range = log_range_map.get(time_range, "Last 24h")
+    
     # 1. Fetch Data
-    stats = analyze_logs("24h") # Default to 24h for report
-    # Get last 100 logs for analysis, show 50 in table
-    logs_data = get_waf_logs(limit=200, time_range="Last 24h")
+    stats = analyze_logs(time_range) 
+    # Get last 200 logs for analysis
+    logs_data = get_waf_logs(limit=200, time_range=log_range)
     logs = logs_data.data
     
     # 2. Additional Analysis (Local Aggregation from sampled logs)
@@ -532,6 +544,10 @@ def generate_html_report() -> str:
                 <div>
                     <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">WAF Security Report</h1>
                     <p class="text-slate-500 font-medium">Generated on {datetime.datetime.now().strftime("%d %B %Y, %H:%M")}</p>
+                    <div class="mt-4 flex gap-4">
+                        <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-bold">System {stats.system_status}</span>
+                        <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Scope: {log_range}</span>
+                    </div>
                 </div>
             </div>
             <div class="text-right no-print flex gap-3">
@@ -586,7 +602,7 @@ def generate_html_report() -> str:
             <!-- Traffic Chart -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-slate-800">Traffic Volume (24h)</h3>
+                    <h3 class="font-bold text-slate-800">Traffic Volume ({time_range})</h3>
                     <div class="flex gap-4 text-xs font-medium text-slate-500">
                          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Valid</span>
                          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Blocked</span>
