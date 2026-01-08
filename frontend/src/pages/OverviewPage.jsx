@@ -232,6 +232,7 @@ const OverviewPage = () => {
     const [timeRange, setTimeRange] = useState('Live');
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [exportTimeRange, setExportTimeRange] = useState('24h');
+    const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '' }
     const { theme } = useTheme();
 
     useEffect(() => {
@@ -261,6 +262,11 @@ const OverviewPage = () => {
 
     const handleExport = async (format = 'html') => {
         setShowExportMenu(false);
+        setNotification({ type: 'success', message: `${format.toUpperCase()} report export started...` });
+        
+        // Auto hide after 3.5s
+        setTimeout(() => setNotification(null), 3500);
+
         try {
             const response = await exportReport(format, exportTimeRange);
             const blob = new Blob([response.data], { type: format === 'pdf' ? 'text/html' : (format === 'csv' ? 'text/csv' : 'text/html') });
@@ -281,10 +287,12 @@ const OverviewPage = () => {
             // Cleanup
             setTimeout(() => window.URL.revokeObjectURL(url), 100);
 
+
+
         } catch (err) {
             console.error("Export failed:", err);
-            setError("Failed to export report.");
-            setTimeout(() => setError(null), 3000);
+            setNotification({ type: 'error', message: "Failed to export report" });
+            setTimeout(() => setNotification(null), 3000);
         }
     };
 
@@ -316,6 +324,31 @@ const OverviewPage = () => {
     return (
         <div className={`space-y-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
             
+             {/* Notification Toast */}
+             {notification && (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 animate-in fade-in slide-in-from-top-4 zoom-in-95 duration-200">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${notification.type === 'success' ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-emerald-500/20' : 'bg-gradient-to-tr from-rose-500 to-red-500 text-white shadow-rose-500/20'}`}>
+                         {notification.type === 'success' ? <Shield className="w-4 h-4 fill-current" /> : <FileWarning className="w-4 h-4" />}
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-white tracking-tight">
+                            {notification.type === 'success' ? 'System Notification' : 'Action Failed'}
+                        </p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {notification.message}
+                        </p>
+                    </div>
+                    <div className="pl-2 border-l border-slate-200 dark:border-slate-800 ml-1">
+                        <button onClick={() => setNotification(null)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                             <span className="sr-only">Close</span>
+                             <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex items-center justify-center">
+                                 <span className="text-[10px] font-bold text-slate-500 dark:text-white leading-none mb-0.5">×</span>
+                             </div>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Top Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-2">
