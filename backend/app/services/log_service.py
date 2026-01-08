@@ -528,6 +528,8 @@ def generate_html_report(time_range: str = "24h") -> str:
                 .no-print {{ display: none !important; }}
                 .page-break {{ page-break-before: always; }}
                 body {{ background: white; }}
+                @page {{ margin: 0; }}
+                body {{ margin: 1.6cm; }}
             }}
             body {{ font-family: 'Inter', sans-serif; }}
         </style>

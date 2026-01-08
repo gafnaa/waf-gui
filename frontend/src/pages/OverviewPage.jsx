@@ -266,7 +266,37 @@ const OverviewPage = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            const extension = format === 'csv' ? 'csv' : 'html';
+            let extension = 'html';
+            if (format === 'csv') extension = 'csv';
+            // PDF is still HTML technically (client-side print), but if backend supports it, we might want 'pdf'.
+            // However, our backend for 'pdf' format currently returns HTML optimized for print.
+            // Let's keep it HTML for now as per current backend logic, OR users rely on "Print to PDF".
+            // If the user wants the file to BECOME a PDF automatically, we need backend PDF generation.
+            // Based on previous instruction "HTML report with print styles", 'pdf' request usually returns HTML.
+            // But let's check backend logic.
+            // Backend: if format != csv, it returns HTML.
+            // So for now, we name it .html but browser print will handle it. 
+            // BUT user said "downloaded file is .html", implying they WANT .pdf.
+            // Since we are doing Client-Side PDF (Print), we download HTML and user prints it.
+            // IF we want direct PDF download, we need backend PDF lib (e.g. weasyprint).
+            // Current Backend just returns HTML. 
+            // Let's stick to HTML download but maybe trigger print window automatically?
+            // User query: "downloaded .html instead of .pdf".
+            // If we cannot generate PDF on backend, we can't download .pdf directly.
+            // We should clarify or simulate it. 
+            // Actually, best approach for "Print/PDF" button in this context (without backend PDF lib)
+            // is to Open in New Tab and trigger Window.print(), NOT download.
+            
+            // LET'S CHANGE STRATEGY: 
+            // For 'pdf', instead of creating a download link, we open the blob in new window.
+            if (format === 'pdf') {
+                 const newWindow = window.open(url, '_blank');
+                 if (newWindow) {
+                     newWindow.onload = () => newWindow.print(); 
+                 }
+                 return; 
+            }
+
             link.setAttribute('download', `waf_security_report.${extension}`);
             document.body.appendChild(link);
             link.click();
@@ -370,7 +400,7 @@ const OverviewPage = () => {
                                         </div>
                                     </button>
                                     <button 
-                                      onClick={() => handleExport('html')}
+                                      onClick={() => handleExport('pdf')}
                                       className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-2 group transition-colors"
                                     >
                                         <div className="w-8 h-8 flex items-center justify-center bg-rose-100 dark:bg-rose-500/10 text-rose-600 group-hover:bg-rose-200 dark:group-hover:bg-rose-500/20 transition-colors rounded-lg">
