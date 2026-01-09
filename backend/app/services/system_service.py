@@ -1,30 +1,37 @@
 import subprocess
-import random
+import random # Masih dipakai untuk fallback jika psutil error, tapi utamanya pakai data real
 import os
 import psutil
 import time
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.core.config import get_settings
 from app.db import get_db_connection
 
 settings = get_settings()
 
-# --- Configuration Files (Generated from DB) ---
-if os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
-    # Dev Mode
+# --- Configuration Files (Priority: .env -> Default Linux -> Dev Mode) ---
+# Kita ambil dari Environment Variable dulu (sesuai setup .env tadi)
+if os.getenv("WAF_CONFIG_PATH"):
+    # MODE PRODUKSI (Via .env)
+    EXCLUSION_FILE = os.getenv("WAF_CONFIG_PATH")
+    HOTLINK_NGINX_FILE = os.getenv("HOTLINK_CONFIG_PATH", "/etc/nginx/modsec/sentinel_hotlink.conf")
+    IP_RULES_FILE = "/etc/nginx/modsec/sentinel_ip_rules.conf" # Tambahan untuk IP Rule
+    CUSTOM_RULES_FILE = "/etc/nginx/modsec/custom_rules.conf"
+elif os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
+    # MODE DEVELOPMENT (Laptop/Windows)
     PREFIX = os.path.join(os.path.dirname(__file__), "..", "..")
     IP_RULES_FILE = os.path.join(PREFIX, "dummy_waf.conf")
     EXCLUSION_FILE = os.path.join(PREFIX, "dummy_waf_exclusions.conf")
     CUSTOM_RULES_FILE = os.path.join(PREFIX, "custom_rules.conf")
     HOTLINK_NGINX_FILE = os.path.join(PREFIX, "hotlink.conf")
 else:
-    # Production Mode
-    IP_RULES_FILE = "/etc/nginx/modsec/whitelist.conf" # Assuming standard include
-    EXCLUSION_FILE = "/etc/nginx/modsec/waf-exclusions.conf"
+    # MODE PRODUKSI (Default Linux jika .env tidak lengkap)
+    IP_RULES_FILE = "/etc/nginx/modsec/sentinel_ip_rules.conf"
+    EXCLUSION_FILE = "/etc/nginx/modsec/sentinel_exclusions.conf"
     CUSTOM_RULES_FILE = "/etc/nginx/modsec/custom_rules.conf"
-    HOTLINK_NGINX_FILE = "/etc/nginx/conf.d/hotlink.conf"
+    HOTLINK_NGINX_FILE = "/etc/nginx/modsec/sentinel_hotlink.conf"
 
 # --- Static Definitions ---
 WAF_RULES_DB = [
@@ -44,41 +51,61 @@ WAF_RULES_DB = [
 def restart_nginx():
     """Reload Nginx safely via sudo"""
     try:
-        subprocess.run(["sudo", "/usr/bin/systemctl", "reload", "nginx"], check=True)
+        # Gunakan capture_output untuk menangkap pesan error jika config nginx salah
+        result = subprocess.run(["sudo", "/usr/bin/systemctl", "reload", "nginx"], capture_output=True, text=True, check=True)
         return {"status": "success", "message": "Nginx reloaded successfully"}
     except subprocess.CalledProcessError as e:
-        return {"status": "warning", "message": f"Simulated Reload (Dev Mode): {str(e)}"}
+        # Kembalikan pesan error asli dari Nginx (misal: syntax error di .conf)
+        return {"status": "error", "message": f"Nginx Reload Failed: {e.stderr}"}
     except FileNotFoundError:
-        return {"status": "warning", "message": "Nginx verify/reload skipped (Dev Mode)"}
+        return {"status": "warning", "message": "Nginx binary not found (Dev Mode)"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 def sync_ip_rules_file():
     """Generates Nginx config file from DB"""
-    with get_db_connection() as conn:
-        rows = conn.execute("SELECT * FROM ip_rules WHERE status = 'Active'").fetchall()
-    
-    # Ensure dir exists
-    os.makedirs(os.path.dirname(IP_RULES_FILE), exist_ok=True)
-    
-    with open(IP_RULES_FILE, "w") as f:
-        f.write(f"# Auto-generated from WAF GUI DB at {datetime.now()}\n")
-        f.write("# Do not edit manually.\n\n")
-        for r in rows:
-            line = f"# Meta: {r['note']}|{r['duration']}\n{r['action']} {r['ip']};\n"
-            f.write(line)
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute("SELECT * FROM ip_rules WHERE status = 'Active'").fetchall()
+        
+        # Ensure dir exists (hanya jika path-nya absolut)
+        if os.path.isabs(IP_RULES_FILE):
+            os.makedirs(os.path.dirname(IP_RULES_FILE), exist_ok=True)
+        
+        with open(IP_RULES_FILE, "w") as f:
+            f.write(f"# Auto-generated from WAF GUI DB at {datetime.now()}\n")
+            f.write("# Do not edit manually.\n\n")
+            for r in rows:
+                line = f"# Meta: {r['note']} | {r['duration']}\n{r['action']} {r['ip']};\n"
+                f.write(line)
+    except Exception as e:
+        print(f"Error syncing IP rules: {e}")
 
 def sync_exclusions_file():
     """Generates WAF exclusions file from DB"""
-    with get_db_connection() as conn:
-        rows = conn.execute("SELECT rule_id FROM waf_rule_toggles WHERE enabled = 0").fetchall()
-    
-    disabled_ids = [r['rule_id'] for r in rows]
-    
-    os.makedirs(os.path.dirname(EXCLUSION_FILE), exist_ok=True)
-    
-    with open(EXCLUSION_FILE, "w") as f:
-        f.write(f"# Auto-generated WAF Exclusions at {datetime.now()}\n")
-        for rule_id in disabled_ids:
-            f.write(f"SecRuleRemoveById {rule_id}\n")
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute("SELECT rule_id FROM waf_rule_toggles WHERE enabled = 0").fetchall()
+        
+        disabled_ids = [r['rule_id'] for r in rows]
+        
+        if os.path.isabs(EXCLUSION_FILE):
+            os.makedirs(os.path.dirname(EXCLUSION_FILE), exist_ok=True)
+        
+        with open(EXCLUSION_FILE, "w") as f:
+            f.write(f"# Auto-generated WAF Exclusions at {datetime.now()}\n")
+            for rule_id in disabled_ids:
+                # Mapping ID Internal dashboard ke ID OWASP CRS (Jika perlu mapping khusus)
+                # Disini kita asumsikan ID di DB (misal 942000) sudah sesuai CRS
+                # Tapi karena di WAF_RULES_DB ID-nya string teks (SQL-01), kita perlu logic mapping
+                # Sesuai diskusi sebelumnya, kita pakai ID generik atau list ID CRS
+                # Untuk prototype ini, kita tulis comment saja dulu jika ID nya bukan angka
+                if rule_id.isdigit():
+                    f.write(f"SecRuleRemoveById {rule_id}\n")
+                else:
+                    f.write(f"# Rule {rule_id} disabled (Manual config required for named groups)\n")
+    except Exception as e:
+        print(f"Error syncing exclusions: {e}")
 
 # --- Service Functions ---
 
@@ -91,15 +118,12 @@ def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "
 
     try:
         with get_db_connection() as conn:
-            # Check duplicate
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM ip_rules WHERE ip = ?", (ip_address,))
             if cursor.fetchone():
                 return {"status": "error", "message": f"Rule for {ip_address} already exists"}
             
-            # Insert
-            # Fake region detection
-            region = "US" if "1" in ip_address else ("CN" if "182" in ip_address else "Local")
+            region = "Local" # Di real app bisa pakai GeoIP library
             
             cursor.execute(
                 "INSERT INTO ip_rules (ip, action, note, duration, region) VALUES (?, ?, ?, ?, ?)",
@@ -115,9 +139,7 @@ def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "
 
 def get_ip_rules():
     with get_db_connection() as conn:
-        # Get active rules
         rows = conn.execute("SELECT * FROM ip_rules ORDER BY created_at DESC").fetchall()
-    
     return [dict(r) for r in rows]
 
 def delete_ip_rule(ip_address: str):
@@ -136,9 +158,7 @@ def delete_ip_rule(ip_address: str):
         return {"status": "error", "message": str(e)}
 
 def get_waf_rules():
-    # Merge Static Info with DB State
     rules = [r.copy() for r in WAF_RULES_DB]
-    
     with get_db_connection() as conn:
         rows = conn.execute("SELECT rule_id, enabled FROM waf_rule_toggles").fetchall()
         db_state = {r['rule_id']: bool(r['enabled']) for r in rows}
@@ -146,11 +166,9 @@ def get_waf_rules():
     for rule in rules:
         if rule['id'] in db_state:
             rule['enabled'] = db_state[rule['id']]
-            
     return rules
 
 def toggle_rule(rule_id: str, enable: bool):
-    # Verify ID exists
     rule = next((r for r in WAF_RULES_DB if r['id'] == rule_id), None)
     if not rule:
         return {"status": "error", "message": "Rule ID not found"}
@@ -158,7 +176,6 @@ def toggle_rule(rule_id: str, enable: bool):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            # Upsert (SQLite syntax: INSERT OR REPLACE)
             cursor.execute(
                 "INSERT OR REPLACE INTO waf_rule_toggles (rule_id, enabled) VALUES (?, ?)",
                 (rule_id, 1 if enable else 0)
@@ -179,7 +196,6 @@ def get_hotlink_config():
         "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
         "domains": ["google.com", "bing.com", "yahoo.com"]
     }
-    
     with get_db_connection() as conn:
         row = conn.execute("SELECT value FROM settings WHERE key = 'hotlink_config'").fetchone()
         if row:
@@ -187,12 +203,10 @@ def get_hotlink_config():
                 return json.loads(row['value'])
             except:
                 pass
-                
     return default_config
 
 def save_hotlink_config(config: dict):
     try:
-        # Save to DB
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -201,7 +215,6 @@ def save_hotlink_config(config: dict):
             )
             conn.commit()
 
-        # Generate Nginx Config
         ext_str = "|".join(config.get("extensions", []))
         domains_str = " ".join(config.get("domains", []))
         
@@ -215,7 +228,9 @@ location ~ \.({ext_str})$ {{
     }}
 }}
 """
-        os.makedirs(os.path.dirname(HOTLINK_NGINX_FILE), exist_ok=True)
+        if os.path.isabs(HOTLINK_NGINX_FILE):
+             os.makedirs(os.path.dirname(HOTLINK_NGINX_FILE), exist_ok=True)
+
         with open(HOTLINK_NGINX_FILE, "w") as f:
             f.write(nginx_conf)
 
@@ -233,7 +248,8 @@ def get_custom_rules():
 
 def save_custom_rules(content: str):
     try:
-        os.makedirs(os.path.dirname(CUSTOM_RULES_FILE), exist_ok=True)
+        if os.path.isabs(CUSTOM_RULES_FILE):
+            os.makedirs(os.path.dirname(CUSTOM_RULES_FILE), exist_ok=True)
         with open(CUSTOM_RULES_FILE, "w") as f:
             f.write(content)
         restart_nginx()
@@ -247,6 +263,7 @@ def clear_cache():
             time.sleep(1)
             return {"status": "success", "message": "Cache cleared successfully (Simulation)"}
         else:
+            # Command hapus cache nginx standar
             subprocess.run("sudo rm -rf /var/cache/nginx/*", shell=True, check=True)
             restart_nginx()
             return {"status": "success", "message": "Nginx cache cleared"}
@@ -254,13 +271,14 @@ def clear_cache():
         return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
 
 def manage_service(service_name: str, action: str):
+    # Mapping nama service di Dashboard vs nama service asli di Linux
     ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban", "modsec_crs", "crs"]
     SERVICE_MAP = {
-        "ssh": "sshd",
+        "ssh": "sshd", # Di ubuntu biasanya sshd atau ssh
         "nginx": "nginx",
         "postgresql": "postgresql",
         "fail2ban": "fail2ban",
-        "modsec_crs": "nginx", # ModSec is part of Nginx
+        "modsec_crs": "nginx", 
         "crs": "nginx"
     }
 
@@ -270,12 +288,12 @@ def manage_service(service_name: str, action: str):
     sys_name = SERVICE_MAP.get(service_name, service_name)
 
     if action not in ["start", "stop", "restart"]:
-        return {"status": "error", "message": "Invalid action. Use start, stop, or restart."}
+        return {"status": "error", "message": "Invalid action."}
 
     try:
         if os.name == 'nt':
             time.sleep(1)
-            return {"status": "success", "message": f"[DEV] Service {sys_name} {action}ed successfully."}
+            return {"status": "success", "message": f"[DEV] Service {sys_name} {action}ed."}
         else:
             cmd = ["sudo", "/usr/bin/systemctl", action, sys_name]
             subprocess.run(cmd, check=True)
@@ -287,6 +305,7 @@ def manage_service(service_name: str, action: str):
         return {"status": "error", "message": str(e)}
 
 def get_services_status():
+    # Service yang mau dimonitor
     target_services = [
         {"name": "nginx", "label": "Nginx Web Server"},
         {"name": "modsec_crs", "label": "Protection Rules (OWASP CRS)"},
@@ -295,10 +314,10 @@ def get_services_status():
     
     results = []
     
-    # Windows Dev Mode Fallback
+    # Windows Fallback
     if os.name == 'nt':
         return [
-            {"id": "nginx", "name": "Nginx Web Server", "status": "Active", "pid": "1024", "cpu": f"{random.uniform(0.5, 5.0):.1f}%", "uptime": "14d"},
+            {"id": "nginx", "name": "Nginx Web Server", "status": "Active", "pid": "1024", "cpu": "1.2%", "uptime": "14d"},
             {"id": "crs", "name": "Protection Rules (OWASP CRS)", "status": "Active", "pid": "-", "cpu": "-", "uptime": "14d"},
             {"id": "ssh", "name": "SSH Service", "status": "Active", "pid": "892", "cpu": "0.1%", "uptime": "45d"},
         ]
@@ -306,16 +325,15 @@ def get_services_status():
     for svc in target_services:
         s_name = svc["name"]
         
-        # Virtual Service: OWASP CRS
+        # Logika khusus untuk CRS (karena dia bukan service beneran, tapi nempel di Nginx)
         if s_name == "modsec_crs":
              item = {
                 "id": "crs",
                 "name": svc["label"],
                 "status": "Active",
-                "pid": "-",
-                "cpu": "-",
-                "uptime": "-"
+                "pid": "-", "cpu": "-", "uptime": "-"
              }
+             # Cek apakah nginx aktif
              res = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
              if res.returncode != 0:
                  item["status"] = "Inactive"
@@ -323,6 +341,9 @@ def get_services_status():
              results.append(item)
              continue
 
+        # Logic standard untuk service systemd (nginx, sshd)
+        real_svc_name = "sshd" if s_name == "sshd" else s_name # Handle sshd naming
+        
         item = {
             "id": svc["name"],
             "name": svc["label"],
@@ -333,18 +354,22 @@ def get_services_status():
         }
         
         try:
-            res = subprocess.run(["systemctl", "is-active", s_name], capture_output=True, text=True)
-            if res.returncode == 0:
+            # 1. Cek Status
+            res = subprocess.run(["systemctl", "is-active", real_svc_name], capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip() == "active":
                 item["status"] = "Active"
-                res_pid = subprocess.run(["systemctl", "show", "--property", "MainPID", "--value", s_name], capture_output=True, text=True)
+                
+                # 2. Ambil PID
+                res_pid = subprocess.run(["systemctl", "show", "--property", "MainPID", "--value", real_svc_name], capture_output=True, text=True)
                 pid_str = res_pid.stdout.strip()
                 
                 if pid_str and pid_str != "0":
                     pid = str(pid_str)
                     item["pid"] = pid
                     try:
+                        # 3. Ambil CPU & Uptime via PSUTIL
                         p = psutil.Process(int(pid_str))
-                        item["cpu"] = f"{p.cpu_percent(interval=None)}%"
+                        item["cpu"] = f"{p.cpu_percent(interval=0.1)}%" # Interval kecil agar tidak blocking
                         
                         create_time = datetime.fromtimestamp(p.create_time())
                         uptime_duration = datetime.now() - create_time
@@ -367,27 +392,58 @@ def get_services_status():
     return results
 
 def get_system_health():
-    ram_total = 16.0
-    ram_used = 8.4 + random.uniform(-0.5, 0.5)
-    ram_percent = (ram_used / ram_total) * 100
+    """Mengambil data real hardware menggunakan psutil"""
+    if os.name == 'nt':
+        # Data dummy untuk Windows (karena loadavg ga ada di windows)
+        return {
+            "uptime": "DEV MODE",
+            "ram_usage": {"used": 8, "total": 16, "percent": 50},
+            "cpu_usage": 15,
+            "disk_usage": {"used_percent": 45, "path": "C:/"},
+            "load_avg": 0.5,
+            "network": {"in": 100, "out": 200},
+            "services": get_services_status()
+        }
+
+    # 1. Memory
+    mem = psutil.virtual_memory()
+    ram_gb = round(mem.total / (1024**3), 2)
+    used_gb = round(mem.used / (1024**3), 2)
     
-    cpu_usage = int(12 + random.uniform(-5, 10))
-    load_avg = 0.45 + random.uniform(0, 0.2)
-    uptime = "14d 2h 12m"
-    net_in = int(120 + random.uniform(-20, 30))
-    net_out = int(50 + random.uniform(-10, 10))
+    # 2. CPU
+    cpu_usage = psutil.cpu_percent(interval=0.5)
+    
+    # 3. Disk
+    disk = psutil.disk_usage('/')
+    
+    # 4. Load Average (1 menit)
+    try:
+        load_avg = os.getloadavg()[0]
+    except:
+        load_avg = 0
+        
+    # 5. Uptime
+    boot_time = datetime.fromtimestamp(psutil.boot_time())
+    uptime_sec = datetime.now() - boot_time
+    uptime_str = f"{uptime_sec.days}d {uptime_sec.seconds // 3600}h"
+    
+    # 6. Network
+    net = psutil.net_io_counters()
+    # Konversi ke KB untuk display
+    net_in = round(net.bytes_recv / 1024, 2)
+    net_out = round(net.bytes_sent / 1024, 2)
     
     services = get_services_status()
     
     return {
-        "uptime": uptime,
+        "uptime": uptime_str,
         "ram_usage": {
-            "used": round(ram_used, 1), 
-            "total": ram_total, 
-            "percent": round(ram_percent, 1)
+            "used": used_gb, 
+            "total": ram_gb, 
+            "percent": mem.percent
         },
         "cpu_usage": cpu_usage,
-        "disk_usage": {"used_percent": 85, "path": "/var/log"},
+        "disk_usage": {"used_percent": disk.percent, "path": "/"},
         "load_avg": round(load_avg, 2),
         "network": {"in": net_in, "out": net_out},
         "services": services
@@ -403,10 +459,9 @@ def factory_reset():
             cursor.execute("DELETE FROM ip_rules")
             cursor.execute("DELETE FROM waf_rule_toggles")
             cursor.execute("DELETE FROM settings")
-            cursor.execute("DELETE FROM users") # Wipe users
+            cursor.execute("DELETE FROM users")
 
-            # 2. Restore Default Admin
-            # admin123 hash
+            # 2. Restore Default Admin (admin/admin123)
             default_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW" 
             cursor.execute(
                 "INSERT INTO users (username, full_name, hashed_password) VALUES (?, ?, ?)",
@@ -419,20 +474,18 @@ def factory_reset():
         sync_ip_rules_file()
         sync_exclusions_file()
         
-        # Reset Hotlink
         default_hotlink = {
             "extensions": ["jpg", "jpeg", "png", "gif", "ico", "webp"],
             "domains": ["google.com", "bing.com", "yahoo.com"]
         }
         save_hotlink_config(default_hotlink)
         
-        # Reset Custom Rules
         save_custom_rules("# Custom ModSecurity Rules\n# Add your custom rules here...\n")
         
         # 4. Restart System
         restart_nginx()
         
-        return {"status": "success", "message": "System has been reset to factory defaults. Please login with default credentials."}
+        return {"status": "success", "message": "Factory reset complete."}
         
     except Exception as e:
         return {"status": "error", "message": f"Factory reset failed: {str(e)}"}
