@@ -2,22 +2,22 @@
 
 A high-performance, real-time Web Application Firewall (WAF) management interface designed for Nginx with ModSecurity. This dashboard provides a professional environment for security engineers to monitor traffic, analyze threats, and manage security rules with precision.
 
-## ✨ Key Features
+## Key Features
 
-### 📊 Real-time Monitoring
+### Real-time Monitoring
 
 - **Live Traffic Analysis**: Visualize request trends, attack spikes, and system load in real-time.
 - **Server Health**: Monitor CPU, RAM usage, and Nginx service status (Active/Reload/Restart).
 - **Attack Insights**: Categorized breakdown of threats (SQL Injection, XSS, RCE, LFI, etc.).
 
-### 📝 Advanced Logs Explorer
+### Advanced Logs Explorer
 
 - **Live Tail**: Watch log events stream in real-time (CLI-style experience).
 - **Smart Filtering**: Filter logs by Time Range (Last Hour, 3d, 7d), Attack Type, Status Code, or IP.
 - **Detailed Inspection**: View full request details, including headers and payloads.
 - **Export Capabilities**: Download filtered log datasets as HTML and CSV for external analysis.
 
-### 🛠️ Rules Engine & Configuration
+### Rules Engine & Configuration
 
 - **Core Rule Set (CRS) Control**: Easily toggle OWASP Core Rules categories.
 - **Custom Rules Editor**: Integrated IDE-like editor for `custom_rules.conf` with:
@@ -26,12 +26,12 @@ A high-performance, real-time Web Application Firewall (WAF) management interfac
 - **IP Access Control**: One-click blocking or allowing of specific IP addresses.
 - **Hotlink Protection**: Manage image/resource hotlinking settings easily.
 
-### 🔔 Modern UX
+### Modern UX
 
 - **Custom Notifications**: Real-time non-blocking toast notifications for system events and actions.
 - **Dark Mode**: Aesthetic interface optimized for long security monitoring sessions.
 
-## 🚀 Tech Stack
+## Tech Stack
 
 **Frontend**
 
@@ -49,7 +49,29 @@ A high-performance, real-time Web Application Firewall (WAF) management interfac
 - **Validation**: Pydantic
 - **Database**: SQLite (via SQLAlchemy)
 
-## 🛠️ Installation & Setup
+## Project Structure
+
+```bash
+waf-gui/
+├── backend/
+│   ├── app/
+│   │   ├── services/       # Business logic (logs, auth, system)
+│   │   ├── main.py         # FastAPI entry point
+│   │   └── db.py           # Database models & setup
+│   ├── custom_rules.conf   # WAF rules file
+│   └── users.json          # User data (if file-based)
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Application pages (Overview, Logs, etc.)
+│   │   ├── services/       # API integration
+│   │   ├── context/        # Theme & Auth context
+│   │   └── App.jsx         # Main React component
+│   └── public/             # Static assets
+└── README.md
+```
+
+## Installation & Setup
 
 ### Prerequisites
 
@@ -106,7 +128,7 @@ npm run dev
 
 Access the dashboard at `http://localhost:5173`.
 
-## 🔒 Security Note
+## Security Note
 
 This dashboard possesses administrative capabilities (restarting services, editing WAF rules). **Do not expose this application to the public internet** without proper authentication and network restrictions (VPN/IP Whitelist).
 
