@@ -107,7 +107,7 @@ def delete_rule(ip: str, user = Depends(auth_service.get_current_user)):
 
 @app.post("/api/system/restart", response_model=CommandResponse)
 def restart_server(user = Depends(auth_service.get_current_user)):
-    return system_service.restart_nginx()
+    return system_service.restart_caddy()
 
 @app.get("/api/waf/custom")
 def get_custom_rules(user = Depends(auth_service.get_current_user)):

@@ -18,6 +18,7 @@ def generate_fake_trend(final_count: int, length: int = 7):
     base = max(1, final_count // 10)
     return [random.randint(0, base + int(base * 0.5)) for _ in range(length)]
 
+
 def parse_nginx_time(log_time_str):
     # Example: [01/Jan/2026:14:02:40 +0000]
     try:
@@ -27,6 +28,14 @@ def parse_nginx_time(log_time_str):
         dt = datetime.datetime.strptime(clean, "%d/%b/%Y:%H:%M:%S %z")
         return dt
     except Exception as e:
+        return None
+
+def parse_caddy_time(ts):
+    try:
+        if isinstance(ts, (int, float)):
+            return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+        return None
+    except:
         return None
 
 def analyze_logs(time_range: str = "live") -> StatsResponse:
@@ -97,56 +106,76 @@ def analyze_logs(time_range: str = "live") -> StatsResponse:
                 lines = f.readlines()
                 
                 for line in lines:
-                    # Parse Time
-                    # Log format: IP - - [TIMESTAMP] ...
-                    parts = line.split(' [')
-                    if len(parts) > 1:
-                        time_part = parts[1].split(']')[0]
-                        log_time = parse_nginx_time(time_part)
-                        
-                        if log_time:
-                            # Filter
-                            if log_time < start_time:
-                                continue
-                            if log_time > now:
-                                continue 
+                    log_time = None
+                    line_lower = line.lower()
+                    is_blocked = False
+                    
+                    # --- CADDY JSON FORMAT ---
+                    if line.strip().startswith("{"):
+                        try:
+                            log_entry = json.loads(line)
+                            log_time = parse_caddy_time(log_entry.get('ts'))
+                            status = log_entry.get('status', 0)
+                            is_blocked = status in [403, 401] or (status >= 400 and status < 500) # Simple heuristic
                             
-                            line_lower = line.lower()
+                            # Reconstruct line_lower for attack detection compatibility
+                            # Dump necessary fields like request uri, headers, etc.
+                            req = log_entry.get('request', {})
+                            line_lower = json.dumps(log_entry).lower()
                             
-                            # Increment Counters
-                            total_req += 1
+                        except:
+                            continue
+                    
+                    # --- NGINX COMMON LOG FORMAT ---
+                    else:
+                        # Parse Time
+                        # Log format: IP - - [TIMESTAMP] ...
+                        parts = line.split(' [')
+                        if len(parts) > 1:
+                            time_part = parts[1].split(']')[0]
+                            log_time = parse_nginx_time(time_part)
                             is_blocked = ' 403 ' in line or ' 401 ' in line
+                    
+                    if log_time:
+                        # Filter
+                        if log_time < start_time:
+                            continue
+                        if log_time > now:
+                            continue 
+                        
+                        # Increment Counters
+                        total_req += 1
+                        if is_blocked:
+                            blocked += 1
+                        
+                        # Categorize Attack
+                        if is_blocked:
+                            if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
+                                attacks["sql_injection"] += 1
+                            elif "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
+                                attacks["xss"] += 1
+                            elif "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
+                                attacks["lfi"] += 1
+                            elif "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
+                                attacks["rce"] += 1
+                            elif "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
+                                attacks["bad_bots"] += 1
+                            elif "login" in line_lower or "admin" in line_lower:
+                                attacks["brute_force"] += 1
+                            elif " 503 " in line or "ratelimit" in line_lower:
+                                attacks["dos"] += 1
+                            elif " 400 " in line or " 405 " in line or " 413 " in line or " 414 " in line:
+                                attacks["protocol"] += 1
+                            else:
+                                attacks["bad_bots"] += 1
+                        
+                        # Map to Bucket
+                        idx = int((log_time - start_time).total_seconds() / step.total_seconds())
+                        if 0 <= idx < len(buckets):
                             if is_blocked:
-                                blocked += 1
-                            
-                            # Categorize Attack
-                            if is_blocked:
-                                if "union" in line_lower or "select" in line_lower or " or " in line_lower or "='" in line:
-                                    attacks["sql_injection"] += 1
-                                elif "<script>" in line_lower or "alert(" in line_lower or "onerror=" in line_lower:
-                                    attacks["xss"] += 1
-                                elif "../" in line or "..%2f" in line_lower or "/etc/passwd" in line_lower:
-                                    attacks["lfi"] += 1
-                                elif "; cat" in line_lower or "; ls" in line_lower or "$(whoami)" in line_lower or "cmd=" in line_lower:
-                                    attacks["rce"] += 1
-                                elif "nmap" in line_lower or "sqlmap" in line_lower or "nikto" in line_lower or "bot" in line_lower:
-                                    attacks["bad_bots"] += 1
-                                elif "login" in line_lower or "admin" in line_lower:
-                                    attacks["brute_force"] += 1
-                                elif " 503 " in line or "ratelimit" in line_lower:
-                                    attacks["dos"] += 1
-                                elif " 400 " in line or " 405 " in line or " 413 " in line or " 414 " in line:
-                                    attacks["protocol"] += 1
-                                else:
-                                    attacks["bad_bots"] += 1
-                            
-                            # Map to Bucket
-                            idx = int((log_time - start_time).total_seconds() / step.total_seconds())
-                            if 0 <= idx < len(buckets):
-                                if is_blocked:
-                                    buckets[idx].blocked += 1
-                                else:
-                                    buckets[idx].valid += 1
+                                buckets[idx].blocked += 1
+                            else:
+                                buckets[idx].valid += 1
 
         except Exception as e:
             print(f"Error reading logs: {e}")
@@ -195,15 +224,35 @@ def get_active_ips(window_minutes: int = 60):
                 # But for < 100k lines it's fine.
                 
                 for line in lines:
-                    parts = line.split(' [')
-                    if len(parts) > 1:
-                        ip = line.split(' - -')[0].strip()
-                        time_part = parts[1].split(']')[0]
-                        dt = parse_nginx_time(time_part)
-                        
+                    dt = None
+                    ip = "Unknown"
+                    is_attack = False
+                    
+                    if line.strip().startswith("{"):
+                        try:
+                            # Caddy JSON
+                            data = json.loads(line)
+                            dt = parse_caddy_time(data.get('ts'))
+                            req = data.get('request', {})
+                            ip = req.get('remote_ip', '0.0.0.0')
+                            status = data.get('status', 0)
+                            if status in [403, 401]:
+                                is_attack = True
+                        except:
+                            continue
+                    else:
+                        # Nginx
+                        parts = line.split(' [')
+                        if len(parts) > 1:
+                            ip = line.split(' - -')[0].strip()
+                            time_part = parts[1].split(']')[0]
+                            dt = parse_nginx_time(time_part)
+                            if ' 403 ' in line or ' 401 ' in line:
+                                is_attack = True
+                    
+                    if dt:
                         # Fallback if parsing fails to ensure data visibility
-                        if dt is None:
-                             dt = now 
+                        # if dt is None: dt = now # logic above guarantees dt is set if we enter here
 
                         if dt >= start_time:
                             s = ip_stats[ip]
@@ -211,7 +260,7 @@ def get_active_ips(window_minutes: int = 60):
                             if s["last"] == datetime.datetime.min or dt > s["last"]:
                                 s["last"] = dt
                             
-                            if ' 403 ' in line or ' 401 ' in line:
+                            if is_attack:
                                 s["atk"] += 1
                                 
         except Exception as e:
@@ -363,10 +412,31 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
                         # Filtering
                         # Time Filter
                         try:
-                            # entry.timestamp is "27/Oct/2023:14:02:11"
-                            # Parse it
-                            dt_entry = datetime.datetime.strptime(entry.timestamp, "%d/%b/%Y:%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-                            if dt_entry < cutoff_time:
+                            # entry.timestamp is "27/Oct/2023:14:02:11" OR "14:02:11" (from Caddy parsed above)
+                            # The Caddy parsing logic above returns just time string for WafLogEntry.
+                            # We need full datetime to compare with cutoff. 
+                            # But wait, WafLogEntry only stores friendly string!
+                            # This reverse scan optimization needs the REAL datetime object.
+                            # We can re-parse from the entry string if it has date, but Caddy one only put %H:%M:%S in the change above.
+                            # FIX above: Let's make WafLogEntry store full string if possible or we parse directly from line again.
+                            # Simpler: Re-parse the line here to get the check, OR improve WafLogEntry to hold raw timestamp.
+                            # Given strictness, let's re-parse line's time quickly.
+                            
+                            dt_check = None
+                            if line.strip().startswith("{"):
+                                # Caddy
+                                d = json.loads(line)
+                                dt_check = parse_caddy_time(d.get('ts'))
+                            else:
+                                # Nginx: 27/Oct/2023:14:02:11
+                                # WafLogEntry timestamp might just be 14:02:11 if using old logic?
+                                # Let's parse from line raw
+                                parts = line.split(' [')
+                                if len(parts) > 1:
+                                    t = parts[1].split(']')[0]
+                                    dt_check = parse_nginx_time(t)
+                                    
+                            if dt_check and dt_check < cutoff_time:
                                 # Optimization: Since we read reversed (newest first), 
                                 # if current log is older than cutoff, all subsequent logs are also older.
                                 break
@@ -415,29 +485,50 @@ def get_waf_logs(page: int = 1, limit: int = 10, search: str = None, status: str
 
 def parse_single_line_safely(line, index, total_lines):
     try:
-        parts = line.split(' [')
-        if len(parts) < 2: return None
-        
-        ip_part = line.split(' - -')[0].strip()
-        time_part_raw = parts[1].split(']')[0]
-        time_part = time_part_raw.split(' ')[0] # Remove +0000
-        
-        rest = parts[1].split(']')[1]
-        req_parts = rest.split('"')
-        if len(req_parts) < 2: return None
-        
-        request_line = req_parts[1]
-        req_tokens = request_line.split()
-        method = req_tokens[0] if len(req_tokens) > 0 else "-"
-        path = req_tokens[1] if len(req_tokens) > 1 else "-"
-        
-        if len(rest.split('"')) > 2:
-             status_part = rest.split('"')[2].strip().split()[0]
-             status_code = int(status_part) if status_part.isdigit() else 0
+        if line.strip().startswith("{"):
+            # Caddy JSON
+            data = json.loads(line)
+            ts = data.get('ts')
+            timestamp_str = "Unknown"
+            if ts:
+                dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+                timestamp_str = dt.strftime("%H:%M:%S")
+
+            req = data.get('request', {})
+            ip_part = req.get('remote_ip', '-')
+            method = req.get('method', '-')
+            path = req.get('uri', '-')
+            status_code = data.get('status', 0)
+            
+            # Reconstruct attack type context
+            line_str = json.dumps(data)
+            current_type = get_attack_type(line_str, status_code)
         else:
-             status_code = 0
+            # Nginx
+            parts = line.split(' [')
+            if len(parts) < 2: return None
+            
+            ip_part = line.split(' - -')[0].strip()
+            time_part_raw = parts[1].split(']')[0]
+            timestamp_str = time_part_raw.split(' ')[0] # Remove +0000
+            
+            rest = parts[1].split(']')[1]
+            req_parts = rest.split('"')
+            if len(req_parts) < 2: return None
+            
+            request_line = req_parts[1]
+            req_tokens = request_line.split()
+            method = req_tokens[0] if len(req_tokens) > 0 else "-"
+            path = req_tokens[1] if len(req_tokens) > 1 else "-"
+            
+            if len(rest.split('"')) > 2:
+                 status_part = rest.split('"')[2].strip().split()[0]
+                 status_code = int(status_part) if status_part.isdigit() else 0
+            else:
+                 status_code = 0
+            
+            current_type = get_attack_type(line, status_code)
         
-        current_type = get_attack_type(line, status_code)
         if status_code == 200 and current_type == "Suspicious":
             current_type = "Safe"
             
@@ -446,7 +537,7 @@ def parse_single_line_safely(line, index, total_lines):
 
         return WafLogEntry(
             id=total_lines - index, # ID based on line number (approx)
-            timestamp=time_part,
+            timestamp=timestamp_str,
             source_ip=ip_part,
             method=method,
             path=path,
