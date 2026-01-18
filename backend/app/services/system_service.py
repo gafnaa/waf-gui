@@ -11,27 +11,26 @@ from app.db import get_db_connection
 
 settings = get_settings()
 
-# --- Configuration Files (Priority: .env -> Default Linux -> Dev Mode) ---
-# Kita ambil dari Environment Variable dulu (sesuai setup .env tadi)
-if os.getenv("WAF_CONFIG_PATH"):
-    # MODE PRODUKSI (Via .env)
-    EXCLUSION_FILE = os.getenv("WAF_CONFIG_PATH")
-    HOTLINK_NGINX_FILE = os.getenv("HOTLINK_CONFIG_PATH", "/etc/nginx/modsec/sentinel_hotlink.conf")
-    IP_RULES_FILE = "/etc/nginx/modsec/sentinel_ip_rules.conf" # Tambahan untuk IP Rule
-    CUSTOM_RULES_FILE = "/etc/nginx/modsec/custom_rules.conf"
-elif os.name == 'nt' or not os.path.exists("/usr/sbin/nginx"):
+# --- Configuration Files (Priority: dev/windows -> .env -> Default Linux) ---
+if os.name == 'nt':
     # MODE DEVELOPMENT (Laptop/Windows)
     PREFIX = os.path.join(os.path.dirname(__file__), "..", "..")
-    IP_RULES_FILE = os.path.join(PREFIX, "dummy_waf.conf")
+    IP_RULES_FILE = os.path.join(PREFIX, "dummy_ip_rules.caddy")
     EXCLUSION_FILE = os.path.join(PREFIX, "dummy_waf_exclusions.conf")
     CUSTOM_RULES_FILE = os.path.join(PREFIX, "custom_rules.conf")
-    HOTLINK_NGINX_FILE = os.path.join(PREFIX, "hotlink.conf")
+    HOTLINK_CADDY_FILE = os.path.join(PREFIX, "hotlink.caddy")
+elif os.getenv("WAF_CONFIG_PATH"):
+    # MODE PRODUKSI (Via .env override)
+    EXCLUSION_FILE = os.getenv("WAF_CONFIG_PATH")
+    HOTLINK_CADDY_FILE = os.getenv("HOTLINK_CONFIG_PATH", "/etc/caddy/hotlink.conf")
+    IP_RULES_FILE = os.getenv("IP_RULES_CONFIG_PATH", "/etc/caddy/ip_rules.conf")
+    CUSTOM_RULES_FILE = os.getenv("CUSTOM_RULES_CONFIG_PATH", "/etc/caddy/custom_rules.conf")
 else:
-    # MODE PRODUKSI (Default Linux jika .env tidak lengkap)
-    IP_RULES_FILE = "/etc/nginx/modsec/sentinel_ip_rules.conf"
-    EXCLUSION_FILE = "/etc/nginx/modsec/sentinel_exclusions.conf"
-    CUSTOM_RULES_FILE = "/etc/nginx/modsec/custom_rules.conf"
-    HOTLINK_NGINX_FILE = "/etc/nginx/modsec/sentinel_hotlink.conf"
+    # MODE PRODUKSI (Default Linux Standard)
+    IP_RULES_FILE = "/etc/caddy/ip_rules.caddy"
+    EXCLUSION_FILE = "/etc/caddy/waf_exclusions.conf"
+    CUSTOM_RULES_FILE = "/etc/caddy/custom_rules.conf"
+    HOTLINK_CADDY_FILE = "/etc/caddy/hotlink.caddy"
 
 # --- Static Definitions ---
 WAF_RULES_DB = [
@@ -48,17 +47,17 @@ WAF_RULES_DB = [
 
 # --- Helper Functions ---
 
-def restart_nginx():
-    """Reload Nginx safely via sudo"""
+def restart_caddy():
+    """Reload Caddy safely via sudo"""
     try:
-        # Gunakan capture_output untuk menangkap pesan error jika config nginx salah
-        result = subprocess.run(["sudo", "/usr/bin/systemctl", "reload", "nginx"], capture_output=True, text=True, check=True)
-        return {"status": "success", "message": "Nginx reloaded successfully"}
+        # Gunakan capture_output untuk menangkap pesan error jika config caddy salah
+        result = subprocess.run(["sudo", "/usr/bin/systemctl", "reload", "caddy"], capture_output=True, text=True, check=True)
+        return {"status": "success", "message": "Caddy reloaded successfully"}
     except subprocess.CalledProcessError as e:
-        # Kembalikan pesan error asli dari Nginx (misal: syntax error di .conf)
-        return {"status": "error", "message": f"Nginx Reload Failed: {e.stderr}"}
+        # Kembalikan pesan error asli dari Caddy
+        return {"status": "error", "message": f"Caddy Reload Failed: {e.stderr}"}
     except FileNotFoundError:
-        return {"status": "warning", "message": "Nginx binary not found (Dev Mode)"}
+        return {"status": "warning", "message": "Caddy binary not found (Dev Mode)"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -75,9 +74,27 @@ def sync_ip_rules_file():
         with open(IP_RULES_FILE, "w") as f:
             f.write(f"# Auto-generated from WAF GUI DB at {datetime.now()}\n")
             f.write("# Do not edit manually.\n\n")
-            for r in rows:
-                line = f"# Meta: {r['note']} | {r['duration']}\n{r['action']} {r['ip']};\n"
-                f.write(line)
+            
+            # Caddy format:
+            # (ip_filter) {
+            #   @denied {
+            #     remote_ip 1.2.3.4
+            #   }
+            #   respond @denied 403
+            # }
+            
+            denied_ips = [r['ip'] for r in rows if r['action'] == 'deny']
+            
+            if denied_ips:
+                f.write("(ip_filter) {\n")
+                f.write("    @denied_ips {\n")
+                for ip in denied_ips:
+                    f.write(f"        remote_ip {ip}\n")
+                f.write("    }\n")
+                f.write("    respond @denied_ips 403\n")
+                f.write("}\n")
+            else:
+                f.write("(ip_filter) {\n    # No rules active\n}\n")
     except Exception as e:
         print(f"Error syncing IP rules: {e}")
 
@@ -132,7 +149,7 @@ def add_waf_rule(ip_address: str, action: str, note: str = "", duration: str = "
             conn.commit()
             
         sync_ip_rules_file()
-        restart_nginx()
+        restart_caddy()
         return {"status": "success", "message": f"Rule added for {ip_address}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -152,7 +169,7 @@ def delete_ip_rule(ip_address: str):
             conn.commit()
             
         sync_ip_rules_file()
-        restart_nginx()
+        restart_caddy()
         return {"status": "success", "message": f"Rule removed for {ip_address}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -183,7 +200,7 @@ def toggle_rule(rule_id: str, enable: bool):
             conn.commit()
             
         sync_exclusions_file()
-        restart_nginx()
+        restart_caddy()
         
         status_msg = "Enabled" if enable else "Disabled"
         return {"status": "success", "message": f"Rule {rule['name']} is now {status_msg}"}
@@ -215,26 +232,42 @@ def save_hotlink_config(config: dict):
             )
             conn.commit()
 
-        ext_str = "|".join(config.get("extensions", []))
-        domains_str = " ".join(config.get("domains", []))
+        # Caddy format for Hotlink
+        # @hotlink {
+        #   not header_regexp Referer "^https?://(www\.)?(google\.com|bing\.com)"
+        #   path *.jpg *.png
+        # }
+        # respond @hotlink 403
         
-        nginx_conf = f"""# Auto-generated Hotlink Rules
+        # Prepare regex for domains
+        if config.get("domains"):
+            escaped_domains = [re.escape(d) for d in config.get("domains", [])]
+            domain_regex_part = "|".join(escaped_domains)
+            # Basic regex to match http/https and optional www
+            regex_str = f"^https?://(www\.)?({domain_regex_part})"
+        else:
+            regex_str = "^$" # Block all if no domains allowed (or handle differently)
+            
+        exts = " ".join([f"*.{e}" for e in config.get("extensions", [])])
+
+        caddy_conf = f"""# Auto-generated Hotlink Rules
 # Do not edit manually
 
-location ~ \.({ext_str})$ {{
-    valid_referers none blocked server_names {domains_str};
-    if ($invalid_referer) {{
-        return 403;
+(hotlink_protection) {{
+    @hotlink {{
+        not header_regexp Referer "{regex_str}"
+        path {exts}
     }}
+    respond @hotlink 403
 }}
 """
-        if os.path.isabs(HOTLINK_NGINX_FILE):
-             os.makedirs(os.path.dirname(HOTLINK_NGINX_FILE), exist_ok=True)
+        if os.path.isabs(HOTLINK_CADDY_FILE):
+             os.makedirs(os.path.dirname(HOTLINK_CADDY_FILE), exist_ok=True)
 
-        with open(HOTLINK_NGINX_FILE, "w") as f:
-            f.write(nginx_conf)
+        with open(HOTLINK_CADDY_FILE, "w") as f:
+            f.write(caddy_conf)
 
-        restart_nginx()
+        restart_caddy()
         return {"status": "success", "message": "Hotlink configuration saved and applied."}
         
     except Exception as e:
@@ -252,7 +285,7 @@ def save_custom_rules(content: str):
             os.makedirs(os.path.dirname(CUSTOM_RULES_FILE), exist_ok=True)
         with open(CUSTOM_RULES_FILE, "w") as f:
             f.write(content)
-        restart_nginx()
+        restart_caddy()
         return {"status": "success", "message": "Custom rules saved and applied."}
     except Exception as e:
          return {"status": "error", "message": f"Failed to save rules: {str(e)}"}
@@ -263,23 +296,24 @@ def clear_cache():
             time.sleep(1)
             return {"status": "success", "message": "Cache cleared successfully (Simulation)"}
         else:
-            # Command hapus cache nginx standar
-            subprocess.run("sudo rm -rf /var/cache/nginx/*", shell=True, check=True)
-            restart_nginx()
-            return {"status": "success", "message": "Nginx cache cleared"}
+            # Command hapus cache (opsional untuk caddy, tapi biasanya stateless kecuali configured)
+            # Caddy admin API bisa dipakai untuk wipe cache jika ada
+            # Disini kita skip atau restart caddy saja
+            restart_caddy()
+            return {"status": "success", "message": "Caddy reloaded (cache cleared if applicable)"}
     except Exception as e:
         return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
 
 def manage_service(service_name: str, action: str):
     # Mapping nama service di Dashboard vs nama service asli di Linux
-    ALLOWED_SERVICES = ["nginx", "ssh", "postgresql", "fail2ban", "modsec_crs", "crs"]
+    ALLOWED_SERVICES = ["caddy", "ssh", "postgresql", "fail2ban", "modsec_crs", "crs"]
     SERVICE_MAP = {
-        "ssh": "sshd", # Di ubuntu biasanya sshd atau ssh
-        "nginx": "nginx",
+        "ssh": "sshd", 
+        "caddy": "caddy",
         "postgresql": "postgresql",
         "fail2ban": "fail2ban",
-        "modsec_crs": "nginx", 
-        "crs": "nginx"
+        "modsec_crs": "caddy",  # Coraza runs inside Caddy
+        "crs": "caddy"
     }
 
     if service_name not in ALLOWED_SERVICES:
@@ -307,7 +341,7 @@ def manage_service(service_name: str, action: str):
 def get_services_status():
     # Service yang mau dimonitor
     target_services = [
-        {"name": "nginx", "label": "Nginx Web Server"},
+        {"name": "caddy", "label": "Caddy Web Server"},
         {"name": "modsec_crs", "label": "Protection Rules (OWASP CRS)"},
         {"name": "sshd", "label": "SSH Service"}
     ]
@@ -317,7 +351,7 @@ def get_services_status():
     # Windows Fallback
     if os.name == 'nt':
         return [
-            {"id": "nginx", "name": "Nginx Web Server", "status": "Active", "pid": "1024", "cpu": "1.2%", "uptime": "14d"},
+            {"id": "caddy", "name": "Caddy Web Server", "status": "Active", "pid": "1024", "cpu": "1.2%", "uptime": "14d"},
             {"id": "crs", "name": "Protection Rules (OWASP CRS)", "status": "Active", "pid": "-", "cpu": "-", "uptime": "14d"},
             {"id": "ssh", "name": "SSH Service", "status": "Active", "pid": "892", "cpu": "0.1%", "uptime": "45d"},
         ]
@@ -325,7 +359,7 @@ def get_services_status():
     for svc in target_services:
         s_name = svc["name"]
         
-        # Logika khusus untuk CRS (karena dia bukan service beneran, tapi nempel di Nginx)
+        # Logika khusus untuk CRS (karena dia bukan service beneran, tapi nempel di Caddy)
         if s_name == "modsec_crs":
              item = {
                 "id": "crs",
@@ -333,16 +367,16 @@ def get_services_status():
                 "status": "Active",
                 "pid": "-", "cpu": "-", "uptime": "-"
              }
-             # Cek apakah nginx aktif
-             res = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
+             # Cek apakah caddy aktif
+             res = subprocess.run(["systemctl", "is-active", "caddy"], capture_output=True, text=True)
              if res.returncode != 0:
                  item["status"] = "Inactive"
              
              results.append(item)
              continue
 
-        # Logic standard untuk service systemd (nginx, sshd)
-        real_svc_name = "sshd" if s_name == "sshd" else s_name # Handle sshd naming
+        # Logic standard untuk service systemd (caddy, sshd)
+        real_svc_name = "sshd" if s_name == "sshd" else s_name
         
         item = {
             "id": svc["name"],
@@ -483,7 +517,7 @@ def factory_reset():
         save_custom_rules("# Custom ModSecurity Rules\n# Add your custom rules here...\n")
         
         # 4. Restart System
-        restart_nginx()
+        restart_caddy()
         
         return {"status": "success", "message": "Factory reset complete."}
         
